@@ -1,14 +1,20 @@
-import tseslint from 'typescript-eslint';
+import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ['node_modules', 'dist'],
+    ignores: ["node_modules", "dist"],
   },
   {
-    files: ['**/*.ts'],
+    files: ["**/*.ts"],
     extends: [...tseslint.configs.recommended],
     rules: {
-      // Reglas adicionales pueden agregarse aquí
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_", // ignora argumentos que empiecen por _
+          varsIgnorePattern: "^_", // ignora variables que empiecen por _
+        },
+      ],
     },
-  }
+  },
 );
