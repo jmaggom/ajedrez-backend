@@ -1,10 +1,5 @@
-export type Context = {
-    user: User | null;
-}
+import { Usuario } from "@prisma/client";
 
-export type User = {
-    id: string;
-    email: string;
-    name: string;
-    role: string;
+export type Context = {
+    user: Usuario | null;
 }

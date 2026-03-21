@@ -6,6 +6,7 @@ import { typeDefs } from "./graphql/typeDefs/index";
 import { resolvers } from "./graphql/resolvers/index";
 import { expressMiddleware } from "@apollo/server/express4";
 import authMiddleware from "./middlewares/auth.middleware";
+import { Context } from "./graphql/types/context.types";
 
 dotenv.config();
 
@@ -20,7 +21,7 @@ const startServer = async () => {
     res.json({ status: "servidor funcionando" });
   });
 
-  const server = new ApolloServer({ typeDefs, resolvers });
+  const server = new ApolloServer<Context>({ typeDefs, resolvers });
   await server.start();
 
   app.use("/graphql", expressMiddleware(server, {
