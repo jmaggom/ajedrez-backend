@@ -6,7 +6,7 @@ import { Context } from "../types/context.types";
 
 export const authResolvers = {
     Mutation: {
-        emailLogin: async (_: unknown, { input }: { input: EmailLoginInput }, context: Context) => {
+        emailLogin: async (_: unknown, { input }: { input: EmailLoginInput }, _context: Context) => {
             const user = await prisma.usuario.findFirst({
                 where: { email: input.email }
             })
@@ -32,7 +32,7 @@ export const authResolvers = {
 
             return { mToken: token };
         },
-        registerJugador: async (_: unknown, { input }: { input: RegisterJugadorInput }, context: Context) => {
+        registerJugador: async (_: unknown, { input }: { input: RegisterJugadorInput }, _context: Context) => {
             const existingUser = await prisma.usuario.findFirst({
                 where: { email: input.email }
             });
@@ -91,7 +91,7 @@ export const authResolvers = {
             return { mToken: token };
 
         },
-        registerDelegado: async (_: unknown, { input }: { input: RegisterDelegadoInput }, context: Context) => {
+        registerDelegado: async (_: unknown, { input }: { input: RegisterDelegadoInput }, _context: Context) => {
             const existingUser = await prisma.usuario.findFirst({
                 where: { email: input.email }
             });
