@@ -1,0 +1,248 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ────────────────────────────────────────────────────────
+
+enum Role {
+  admin
+  delegate
+  player
+}
+
+enum RegistrationStatus {
+  confirmed
+  pending
+  waitlist
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  validated
+  rejected
+}
+
+enum RegistrationMethod {
+  self
+  delegate
+}
+
+enum TournamentStatus {
+  draft
+  open
+  in_progress
+  finished
+}
+
+enum LicenseStatus {
+  active
+  inactive
+}
+
+enum NotificationType {
+  tournament
+  registration
+  payment
+  system
+}
+
+// ─── MODELOS ──────────────────────────────────────────────────────
+
+model User {
+  id             Int            @id @default(autoincrement())
+  email          String         @unique
+  password       String
+  role           Role
+  fullName       String
+  phone          String?
+  createdAt      DateTime       @default(now())
+  clubId         Int?
+
+  club           Club?          @relation("DelegadosClub", fields: [clubId], references: [id])
+  player         Player?
+  sessions       MobileSession[]
+  notifications  Notification[]
+}
+
+model Player {
+  id             Int            @id @default(autoincrement())
+  userId         Int            @unique
+  birthDate      DateTime
+  NIF            String         @unique
+  licenseNumber  String?
+  clubId         Int?
+  eloId          Int            @unique
+  joinedAt       DateTime       @default(now())
+  leftAt         DateTime?
+  federationId   String?
+
+  user           User           @relation(fields: [userId], references: [id])
+  club           Club?          @relation("JugadoresClub", fields: [clubId], references: [id])
+  elo            Elo            @relation(fields: [eloId], references: [id])
+  registrations  Registration[]
+  gamesAsWhite   Game[]         @relation("JugadorBlanco")
+  gamesAsBlack   Game[]         @relation("JugadorNegro")
+  eloHistory     EloHistory[]
+  licenses       License[]
+}
+
+model Club {
+  id             Int            @id @default(autoincrement())
+  name           String
+  CIF            String         @unique
+  address        String
+  phone          String
+  email          String
+  createdAt      DateTime       @default(now())
+  logoUrl        String?
+  shortCode      String         @unique
+
+  delegates      User[]         @relation("DelegadosClub")
+  players        Player[]       @relation("JugadoresClub")
+  tournaments    Tournament[]
+}
+
+model Tournament {
+  id                Int              @id @default(autoincrement())
+  name              String
+  organizerId       Int
+  venue             String
+  gpsLocation       String?
+  startDate         DateTime
+  endDate           DateTime
+  format            String
+  rounds            Int
+  timeControl       String
+  availableSlots    Int
+  registrationFee   Float
+  status            TournamentStatus @default(draft)
+  description       String?
+  rulesJson         Json?
+
+  organizer         Club             @relation(fields: [organizerId], references: [id])
+  registrations     Registration[]
+  games             Game[]
+  eloHistory        EloHistory[]
+}
+
+model Registration {
+  id               Int                @id @default(autoincrement())
+  playerId         Int
+  tournamentId     Int
+  registeredAt     DateTime           @default(now())
+  status           RegistrationStatus @default(pending)
+  paymentStatus    PaymentStatus      @default(pending)
+  method           RegistrationMethod @default(self)
+
+  player           Player             @relation(fields: [playerId], references: [id])
+  tournament       Tournament         @relation(fields: [tournamentId], references: [id])
+  paymentReceipt   PaymentReceipt?
+}
+
+model PaymentReceipt {
+  id               Int            @id @default(autoincrement())
+  registrationId   Int?           @unique
+  licenseId        Int?
+  amount           Float
+  date             DateTime       @default(now())
+  status           PaymentStatus  @default(pending)
+  fileUrl          String
+
+  registration     Registration?  @relation(fields: [registrationId], references: [id])
+  license          License?       @relation(fields: [licenseId], references: [id])
+}
+
+model Game {
+  id                Int      @id @default(autoincrement())
+  tournamentId      Int
+  roundNumber       Int
+  whitePlayerId     Int
+  blackPlayerId     Int
+  result            String
+  moves             String?
+  notes             String?
+  durationSeconds   Int?
+
+  tournament        Tournament @relation(fields: [tournamentId], references: [id])
+  whitePlayer       Player     @relation("JugadorBlanco", fields: [whitePlayerId], references: [id])
+  blackPlayer       Player     @relation("JugadorNegro", fields: [blackPlayerId], references: [id])
+}
+
+model EloHistory {
+  id               Int       @id @default(autoincrement())
+  playerId         Int
+  previousEloId    Int
+  newEloId         Int
+  updatedAt        DateTime  @default(now())
+  tournamentId     Int?
+
+  player           Player    @relation(fields: [playerId], references: [id])
+  previousElo      Elo       @relation("EloAnterior", fields: [previousEloId], references: [id])
+  newElo           Elo       @relation("EloNuevo", fields: [newEloId], references: [id])
+  tournament       Tournament? @relation(fields: [tournamentId], references: [id])
+}
+
+model License {
+  id               Int            @id @default(autoincrement())
+  playerId         Int
+  licenseNumber    String         @unique
+  issuedAt         DateTime
+  expiresAt        DateTime
+  status           LicenseStatus  @default(active)
+
+  player           Player         @relation(fields: [playerId], references: [id])
+  paymentReceipts  PaymentReceipt[]
+}
+
+model MobileSession {
+  id               Int       @id @default(autoincrement())
+  userId           Int
+  token            String    @unique
+  createdAt        DateTime  @default(now())
+  expiresAt        DateTime
+  isActive         Boolean   @default(true)
+
+  user             User      @relation(fields: [userId], references: [id])
+}
+
+model Elo {
+  id                  Int           @id @default(autoincrement())
+  fadaClassical       Int           @default(0)
+  fadaRapid           Int           @default(0)
+  fadaBlitz           Int           @default(0)
+  fideClassical       Int           @default(0)
+  fideRapid           Int           @default(0)
+  fideBlitz           Int           @default(0)
+  onlineClassical     Int           @default(0)
+  onlineRapid         Int           @default(0)
+  onlineBlitz         Int           @default(0)
+
+  player              Player?
+  previousEloHistory  EloHistory[]  @relation("EloAnterior")
+  newEloHistory       EloHistory[]  @relation("EloNuevo")
+}
+
+model Notification {
+  id             Int               @id @default(autoincrement())
+  userId         Int
+  type           NotificationType
+  title          String
+  message        String
+  dataJson       Json?
+  isRead         Boolean           @default(false)
+  createdAt      DateTime          @default(now())
+
+  user           User              @relation(fields: [userId], references: [id])
+}
