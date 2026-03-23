@@ -42,5 +42,8 @@
       "tsc --noEmit",
       "eslint"
     ]
+  },
+  "prisma": {
+    "schema": "src/prisma/schema.prisma"
   }
 }
