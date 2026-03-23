@@ -2,11 +2,11 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { ApolloServer } from "@apollo/server";
-import { typeDefs } from "./graphql/typeDefs/index";
+import { typeDefs } from "./graphql/schema/index";
 import { resolvers } from "./graphql/resolvers/index";
 import { expressMiddleware } from "@apollo/server/express4";
-import authMiddleware from "./middlewares/auth.middleware";
-import { Context } from "./graphql/types/context.types";
+import authMiddleware from "./common/middlewares/auth.middleware";
+import { Context } from "./common/context.types";
 
 dotenv.config();
 

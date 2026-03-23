@@ -1,8 +1,8 @@
 import jwt from "jsonwebtoken";
 import { Request } from "express";
-import { Usuario } from "@prisma/client";
+import { JwtUser } from "../context.types";
 
-const authMiddleware = async (req: Request): Promise<Usuario | null> => {
+const authMiddleware = async (req: Request): Promise<JwtUser | null> => {
     const token = req.headers.authorization?.replace("JWT ", "").trim();
     if (!token)
         return null;
@@ -12,7 +12,7 @@ const authMiddleware = async (req: Request): Promise<Usuario | null> => {
     if (!decoded || typeof decoded === "string")
         return null;
 
-    return decoded as Usuario;
+    return decoded as JwtUser;
 }
 
 export default authMiddleware;
