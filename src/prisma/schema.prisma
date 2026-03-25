@@ -51,6 +51,13 @@ enum LicenseStatus {
   inactive
 }
 
+enum LicenseType {
+  fada
+  fide
+  feda
+  online
+}
+
 enum NotificationType {
   tournament
   registration
@@ -81,12 +88,11 @@ model Player {
   userId         Int            @unique
   birthDate      DateTime
   NIF            String         @unique
-  licenseNumber  String?
+  fideId         String?
   clubId         Int?
   eloId          Int            @unique
   joinedAt       DateTime       @default(now())
   leftAt         DateTime?
-  federationId   String?
 
   user           User           @relation(fields: [userId], references: [id])
   club           Club?          @relation("JugadoresClub", fields: [clubId], references: [id])
@@ -198,6 +204,7 @@ model License {
   id               Int            @id @default(autoincrement())
   playerId         Int
   licenseNumber    String         @unique
+  type             LicenseType
   issuedAt         DateTime
   expiresAt        DateTime
   status           LicenseStatus  @default(active)
