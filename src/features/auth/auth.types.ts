@@ -1,6 +1,6 @@
 export type EmailLoginInput = {
     email: string;
-    password: string;
+    otp: string;
 };
 
 export type RegisterPlayerInput = {
@@ -9,7 +9,7 @@ export type RegisterPlayerInput = {
     password: string;
     birthDate: string;
     NIF: string;
-    licenseNumber?: string;
+    fideId?: string;
 };
 
 export type RegisterDelegateInput = {

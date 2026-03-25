@@ -15,21 +15,21 @@ const buildToken = (user: User): string => {
     );
 };
 
-export const login = async (input: EmailLoginInput): Promise<{ token: string }> => {
+export const login = async (input: EmailLoginInput): Promise<{ mToken: string }> => {
     const user = await authModel.findUserByEmail(input.email);
     if (!user) {
         throw new GraphQLError("User not found", { extensions: { code: "NOT_FOUND" } });
     }
 
-    const isValid = await bcrypt.compare(input.password, user.password);
+    const isValid = await bcrypt.compare(input.otp, user.password);
     if (!isValid) {
         throw new GraphQLError("Invalid credentials", { extensions: { code: "UNAUTHENTICATED" } });
     }
 
-    return { token: buildToken(user) };
+    return { mToken: buildToken(user) };
 };
 
-export const registerPlayer = async (input: RegisterPlayerInput): Promise<{ token: string }> => {
+export const registerPlayer = async (input: RegisterPlayerInput): Promise<{ mToken: string }> => {
     const existing = await authModel.findUserByEmail(input.email);
     if (existing) {
         throw new GraphQLError("Email already in use", { extensions: { code: "BAD_USER_INPUT" } });
@@ -42,13 +42,13 @@ export const registerPlayer = async (input: RegisterPlayerInput): Promise<{ toke
         fullName: input.name,
         birthDate: new Date(input.birthDate),
         NIF: input.NIF,
-        licenseNumber: input.licenseNumber,
+        fideId: input.fideId,
     });
 
-    return { token: buildToken(user) };
+    return { mToken: buildToken(user) };
 };
 
-export const registerDelegate = async (input: RegisterDelegateInput): Promise<{ token: string }> => {
+export const registerDelegate = async (input: RegisterDelegateInput): Promise<{ mToken: string }> => {
     const existing = await authModel.findUserByEmail(input.email);
     if (existing) {
         throw new GraphQLError("Email already in use", { extensions: { code: "BAD_USER_INPUT" } });
@@ -61,5 +61,5 @@ export const registerDelegate = async (input: RegisterDelegateInput): Promise<{ 
         fullName: input.name,
     });
 
-    return { token: buildToken(user) };
+    return { mToken: buildToken(user) };
 };
