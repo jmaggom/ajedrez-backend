@@ -65,6 +65,12 @@ enum NotificationType {
   system
 }
 
+enum EloSource {
+  fide_api
+  fada_api
+  online_api
+}
+
 // ─── MODELOS ──────────────────────────────────────────────────────
 
 model User {
@@ -84,24 +90,26 @@ model User {
 }
 
 model Player {
-  id             Int            @id @default(autoincrement())
-  userId         Int            @unique
-  birthDate      DateTime
-  NIF            String         @unique
-  fideId         String?
-  clubId         Int?
-  eloId          Int            @unique
-  joinedAt       DateTime       @default(now())
-  leftAt         DateTime?
+  id                Int            @id @default(autoincrement())
+  userId            Int            @unique
+  birthDate         DateTime
+  NIF               String         @unique
+  fideId            String?
+  federation        String?
+  clubId            Int?
+  eloId             Int            @unique
+  joinedAt          DateTime       @default(now())
+  leftAt            DateTime?
 
-  user           User           @relation(fields: [userId], references: [id])
-  club           Club?          @relation("JugadoresClub", fields: [clubId], references: [id])
-  elo            Elo            @relation(fields: [eloId], references: [id])
-  registrations  Registration[]
-  gamesAsWhite   Game[]         @relation("JugadorBlanco")
-  gamesAsBlack   Game[]         @relation("JugadorNegro")
-  eloHistory     EloHistory[]
-  licenses       License[]
+  user              User           @relation(fields: [userId], references: [id])
+  club              Club?          @relation("JugadoresClub", fields: [clubId], references: [id])
+  elo               Elo            @relation(fields: [eloId], references: [id])
+  registrations     Registration[]
+  gamesAsWhite      Game[]         @relation("JugadorBlanco")
+  gamesAsBlack      Game[]         @relation("JugadorNegro")
+  eloHistory        EloHistory[]
+  licenses          License[]
+  tournamentResults TournamentResult[]
 }
 
 model Club {
@@ -140,7 +148,7 @@ model Tournament {
   organizer         Club             @relation(fields: [organizerId], references: [id])
   registrations     Registration[]
   games             Game[]
-  eloHistory        EloHistory[]
+  results           TournamentResult[]
 }
 
 model Registration {
@@ -187,17 +195,21 @@ model Game {
 }
 
 model EloHistory {
-  id               Int       @id @default(autoincrement())
-  playerId         Int
-  previousEloId    Int
-  newEloId         Int
-  updatedAt        DateTime  @default(now())
-  tournamentId     Int?
+  id             Int       @id @default(autoincrement())
+  playerId       Int
+  source         EloSource
+  period         String
+  classical      Int?
+  rapid          Int?
+  blitz          Int?
+  classicalGames Int?
+  rapidGames     Int?
+  blitzGames     Int?
+  updatedAt      DateTime  @default(now())
 
-  player           Player    @relation(fields: [playerId], references: [id])
-  previousElo      Elo       @relation("EloAnterior", fields: [previousEloId], references: [id])
-  newElo           Elo       @relation("EloNuevo", fields: [newEloId], references: [id])
-  tournament       Tournament? @relation(fields: [tournamentId], references: [id])
+  player         Player    @relation(fields: [playerId], references: [id])
+
+  @@unique([playerId, source, period])
 }
 
 model License {
@@ -225,20 +237,53 @@ model MobileSession {
 }
 
 model Elo {
-  id                  Int           @id @default(autoincrement())
-  fadaClassical       Int           @default(0)
-  fadaRapid           Int           @default(0)
-  fadaBlitz           Int           @default(0)
-  fideClassical       Int           @default(0)
-  fideRapid           Int           @default(0)
-  fideBlitz           Int           @default(0)
-  onlineClassical     Int           @default(0)
-  onlineRapid         Int           @default(0)
-  onlineBlitz         Int           @default(0)
+  id                    Int     @id @default(autoincrement())
+  fadaClassical         Int     @default(0)
+  fadaRapid             Int     @default(0)
+  fadaBlitz             Int     @default(0)
+  fideClassical         Int     @default(0)
+  fideRapid             Int     @default(0)
+  fideBlitz             Int     @default(0)
+  onlineClassical       Int     @default(0)
+  onlineRapid           Int     @default(0)
+  onlineBlitz           Int     @default(0)
+  fideClassicalGames    Int     @default(0)
+  fideRapidGames        Int     @default(0)
+  fideBlitzGames        Int     @default(0)
+  fadaClassicalGames    Int     @default(0)
+  fadaRapidGames        Int     @default(0)
+  fadaBlitzGames        Int     @default(0)
+  onlineClassicalGames  Int     @default(0)
+  onlineRapidGames      Int     @default(0)
+  onlineBlitzGames      Int     @default(0)
 
-  player              Player?
-  previousEloHistory  EloHistory[]  @relation("EloAnterior")
-  newEloHistory       EloHistory[]  @relation("EloNuevo")
+  player                Player?
+}
+
+model TournamentResult {
+  id                Int      @id @default(autoincrement())
+  playerId          Int
+  tournamentId      Int
+  finalPosition     Int
+  points            Float
+  winsAsWhite       Int      @default(0)
+  drawsAsWhite      Int      @default(0)
+  lossesAsWhite     Int      @default(0)
+  winsAsBlack       Int      @default(0)
+  drawsAsBlack      Int      @default(0)
+  lossesAsBlack     Int      @default(0)
+  performanceRating Int?
+  isFideRated       Boolean  @default(false)
+  isFadaRated       Boolean  @default(false)
+  isOnlineRated     Boolean  @default(false)
+  eloChangeFide     Int?
+  eloChangeFada     Int?
+  eloChangeOnline   Int?
+
+  player            Player     @relation(fields: [playerId], references: [id])
+  tournament        Tournament @relation(fields: [tournamentId], references: [id])
+
+  @@unique([playerId, tournamentId])
 }
 
 model Notification {

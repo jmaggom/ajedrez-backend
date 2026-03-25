@@ -1,5 +1,6 @@
 import { GraphQLError } from "graphql";
-import { UpdateProfileInput, UserProfile, UserWithPlayer } from "./user.types";
+import { UpdateProfileInput, UserProfile } from "./user.types";
+import { UserWithPlayer } from "./user.types";
 import * as userModel from "./user.model";
 
 const toUserProfile = (user: UserWithPlayer): UserProfile => ({
@@ -9,7 +10,46 @@ const toUserProfile = (user: UserWithPlayer): UserProfile => ({
     fullName: user.fullName,
     phone: user.phone ?? null,
     player: user.player
-        ? { id: user.player.id, fideId: user.player.fideId ?? null, birthDate: user.player.birthDate }
+        ? {
+            id: user.player.id,
+            fideId: user.player.fideId ?? null,
+            birthDate: user.player.birthDate,
+            federation: user.player.federation ?? null,
+            elo: user.player.elo
+                ? {
+                    fideClassical: user.player.elo.fideClassical,
+                    fideRapid: user.player.elo.fideRapid,
+                    fideBlitz: user.player.elo.fideBlitz,
+                    fadaClassical: user.player.elo.fadaClassical,
+                    fadaRapid: user.player.elo.fadaRapid,
+                    fadaBlitz: user.player.elo.fadaBlitz,
+                    onlineClassical: user.player.elo.onlineClassical,
+                    onlineRapid: user.player.elo.onlineRapid,
+                    onlineBlitz: user.player.elo.onlineBlitz,
+                    fideClassicalGames: user.player.elo.fideClassicalGames,
+                    fideRapidGames: user.player.elo.fideRapidGames,
+                    fideBlitzGames: user.player.elo.fideBlitzGames,
+                    fadaClassicalGames: user.player.elo.fadaClassicalGames,
+                    fadaRapidGames: user.player.elo.fadaRapidGames,
+                    fadaBlitzGames: user.player.elo.fadaBlitzGames,
+                    onlineClassicalGames: user.player.elo.onlineClassicalGames,
+                    onlineRapidGames: user.player.elo.onlineRapidGames,
+                    onlineBlitzGames: user.player.elo.onlineBlitzGames,
+                }
+                : null,
+            eloHistory: user.player.eloHistory.map((entry) => ({
+                id: entry.id,
+                source: entry.source,
+                period: entry.period,
+                classical: entry.classical,
+                rapid: entry.rapid,
+                blitz: entry.blitz,
+                classicalGames: entry.classicalGames,
+                rapidGames: entry.rapidGames,
+                blitzGames: entry.blitzGames,
+                updatedAt: entry.updatedAt,
+            })),
+        }
         : null,
 });
 

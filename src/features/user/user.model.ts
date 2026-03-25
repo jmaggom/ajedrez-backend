@@ -1,17 +1,6 @@
 import { prisma } from "../../config/database";
-import { UserWithPlayer } from "./user.types";
+import { playerSelect, UserWithPlayer } from "./user.types";
 
-const playerSelect = {
-    id: true,
-    fideId: true,
-    userId: true,
-    birthDate: true,
-    NIF: true,
-    clubId: true,
-    eloId: true,
-    joinedAt: true,
-    leftAt: true,
-};
 
 export const findUserById = async (id: number): Promise<UserWithPlayer | null> => {
     return prisma.user.findUnique({
