@@ -1,7 +1,7 @@
 export const authTypeDefs = `
   input EmailLoginInput {
     email: String!
-    password: String!
+    otp: String!
   }
 
   input RegisterPlayerInput {
@@ -10,7 +10,7 @@ export const authTypeDefs = `
     password: String!
     birthDate: String!
     NIF: String!
-    licenseNumber: String
+    fideId: String
   }
 
   input RegisterDelegateInput {
@@ -20,7 +20,7 @@ export const authTypeDefs = `
   }
 
   type AuthResponse {
-    token: String!
+    mToken: String!
   }
 
   type Query {

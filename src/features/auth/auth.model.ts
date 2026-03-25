@@ -11,7 +11,7 @@ export const createUserWithPlayer = async (data: {
     fullName: string;
     birthDate: Date;
     NIF: string;
-    licenseNumber?: string;
+    fideId?: string;
 }): Promise<User> => {
     return prisma.$transaction(async (tx) => {
         const user = await tx.user.create({
@@ -29,7 +29,7 @@ export const createUserWithPlayer = async (data: {
                 eloId: elo.id,
                 birthDate: data.birthDate,
                 NIF: data.NIF,
-                licenseNumber: data.licenseNumber,
+                fideId: data.fideId,
             }
         });
         return user;
