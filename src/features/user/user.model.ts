@@ -1,6 +1,6 @@
 import { EloSource } from "@prisma/client";
 import { prisma } from "../../config/database";
-import { playerSelect, UserWithPlayer } from "./user.types";
+import { playerSelect, SyncPlayerFideDataInput, UserWithPlayer } from "./user.types";
 
 
 export const findUserById = async (id: number): Promise<UserWithPlayer | null> => {
@@ -37,27 +37,7 @@ export const updateUserProfile = async (
 
 export const syncPlayerFideData = async (
     userId: number,
-    data: {
-        fullName: string;
-        federation: string;
-        elo: {
-            fideClassical: number;
-            fideRapid: number;
-            fideBlitz: number;
-            fideClassicalGames: number;
-            fideRapidGames: number;
-            fideBlitzGames: number;
-        };
-        historyEntries: Array<{
-            period: string;
-            classical: number | null;
-            rapid: number | null;
-            blitz: number | null;
-            classicalGames: number | null;
-            rapidGames: number | null;
-            blitzGames: number | null;
-        }>;
-    }
+    data: SyncPlayerFideDataInput
 ): Promise<UserWithPlayer> => {
     return prisma.$transaction(async (tx) => {
         await tx.user.update({
