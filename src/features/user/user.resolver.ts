@@ -19,5 +19,11 @@ export const userResolvers = {
             }
             return userService.updateProfile(ctx.user.id, input);
         },
+        syncFideData: (_: unknown, __: unknown, ctx: Context) => {
+            if (!ctx.user) {
+                throw new GraphQLError("Unauthorized", { extensions: { code: "UNAUTHENTICATED" } });
+            }
+            return userService.syncFideData(ctx.user.id);
+        },
     },
 };

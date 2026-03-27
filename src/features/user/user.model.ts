@@ -1,3 +1,4 @@
+import { EloSource } from "@prisma/client";
 import { prisma } from "../../config/database";
 import { playerSelect, UserWithPlayer } from "./user.types";
 
@@ -27,6 +28,85 @@ export const updateUserProfile = async (
     return prisma.$transaction(async (tx) => {
         await tx.user.update({ where: { id: userId }, data: userData });
         await tx.player.update({ where: { userId }, data: playerData });
+        return tx.user.findUniqueOrThrow({
+            where: { id: userId },
+            include: { player: { select: playerSelect } },
+        });
+    });
+};
+
+export const syncPlayerFideData = async (
+    userId: number,
+    data: {
+        fullName: string;
+        federation: string;
+        elo: {
+            fideClassical: number;
+            fideRapid: number;
+            fideBlitz: number;
+            fideClassicalGames: number;
+            fideRapidGames: number;
+            fideBlitzGames: number;
+        };
+        historyEntries: Array<{
+            period: string;
+            classical: number | null;
+            rapid: number | null;
+            blitz: number | null;
+            classicalGames: number | null;
+            rapidGames: number | null;
+            blitzGames: number | null;
+        }>;
+    }
+): Promise<UserWithPlayer> => {
+    return prisma.$transaction(async (tx) => {
+        await tx.user.update({
+            where: { id: userId },
+            data: { fullName: data.fullName },
+        });
+
+        const player = await tx.player.update({
+            where: { userId },
+            data: { federation: data.federation },
+            select: { id: true, eloId: true },
+        });
+
+        await tx.elo.update({
+            where: { id: player.eloId },
+            data: data.elo,
+        });
+
+        for (const entry of data.historyEntries) {
+            await tx.eloHistory.upsert({
+                where: {
+                    playerId_source_period: {
+                        playerId: player.id,
+                        source: EloSource.fide_api,
+                        period: entry.period,
+                    },
+                },
+                create: {
+                    playerId: player.id,
+                    source: EloSource.fide_api,
+                    period: entry.period,
+                    classical: entry.classical,
+                    rapid: entry.rapid,
+                    blitz: entry.blitz,
+                    classicalGames: entry.classicalGames,
+                    rapidGames: entry.rapidGames,
+                    blitzGames: entry.blitzGames,
+                },
+                update: {
+                    classical: entry.classical,
+                    rapid: entry.rapid,
+                    blitz: entry.blitz,
+                    classicalGames: entry.classicalGames,
+                    rapidGames: entry.rapidGames,
+                    blitzGames: entry.blitzGames,
+                },
+            });
+        }
+
         return tx.user.findUniqueOrThrow({
             where: { id: userId },
             include: { player: { select: playerSelect } },

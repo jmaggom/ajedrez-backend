@@ -79,3 +79,13 @@ export const playerSelect = {
 export type UserWithPlayer = Prisma.UserGetPayload<{
     include: { player: { select: typeof playerSelect } };
 }>;
+
+export type SyncFideDataResponse = {
+    name: string;
+    federation: string;
+    birthYear: number;
+    currentClassical: number | null;
+    currentRapid: number | null;
+    currentBlitz: number | null;
+    historySynced: number;
+};

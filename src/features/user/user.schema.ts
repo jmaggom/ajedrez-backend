@@ -62,7 +62,18 @@ export const userTypeDefs = `
     me: UserProfile!
   }
 
+  type SyncFideDataResponse {
+    name: String!
+    federation: String!
+    birthYear: Int!
+    currentClassical: Int
+    currentRapid: Int
+    currentBlitz: Int
+    historySynced: Int!
+  }
+
   extend type Mutation {
     updateProfile(input: UpdateProfileInput!): UserProfile!
+    syncFideData: SyncFideDataResponse!
   }
 `;
