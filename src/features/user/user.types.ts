@@ -80,6 +80,28 @@ export type UserWithPlayer = Prisma.UserGetPayload<{
     include: { player: { select: typeof playerSelect } };
 }>;
 
+export type SyncPlayerFideDataInput = {
+    fullName: string;
+    federation: string;
+    elo: {
+        fideClassical: number;
+        fideRapid: number;
+        fideBlitz: number;
+        fideClassicalGames: number;
+        fideRapidGames: number;
+        fideBlitzGames: number;
+    };
+    historyEntries: Array<{
+        period: string;
+        classical: number | null;
+        rapid: number | null;
+        blitz: number | null;
+        classicalGames: number | null;
+        rapidGames: number | null;
+        blitzGames: number | null;
+    }>;
+};
+
 export type SyncFideDataResponse = {
     name: string;
     federation: string;
