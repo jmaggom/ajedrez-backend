@@ -19,6 +19,7 @@ enum Role {
   admin
   delegate
   player
+  referee
 }
 
 enum RegistrationStatus {
@@ -143,7 +144,8 @@ model Tournament {
   registrationFee   Float
   status            TournamentStatus @default(draft)
   description       String?
-  rulesJson         Json?
+  eloEligible       Boolean          @default(false)
+  requirements      Json
 
   organizer         Club             @relation(fields: [organizerId], references: [id])
   registrations     Registration[]
@@ -188,6 +190,7 @@ model Game {
   moves             String?
   notes             String?
   durationSeconds   Int?
+  eloEligible       Boolean    @default(false)
 
   tournament        Tournament @relation(fields: [tournamentId], references: [id])
   whitePlayer       Player     @relation("JugadorBlanco", fields: [whitePlayerId], references: [id])
@@ -273,9 +276,9 @@ model TournamentResult {
   drawsAsBlack      Int      @default(0)
   lossesAsBlack     Int      @default(0)
   performanceRating Int?
+  eloEligible       Boolean  @default(false)
   isFideRated       Boolean  @default(false)
   isFadaRated       Boolean  @default(false)
-  isOnlineRated     Boolean  @default(false)
   eloChangeFide     Int?
   eloChangeFada     Int?
   eloChangeOnline   Int?
