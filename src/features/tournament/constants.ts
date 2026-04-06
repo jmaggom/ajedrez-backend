@@ -1,0 +1,1 @@
+export const FREEMIUM_MAX_ACTIVE_TOURNAMENTS = 3;

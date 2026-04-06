@@ -19,6 +19,7 @@ enum Role {
   admin
   delegate
   player
+  referee
 }
 
 enum RegistrationStatus {
@@ -100,6 +101,9 @@ model Player {
   eloId             Int            @unique
   joinedAt          DateTime       @default(now())
   leftAt            DateTime?
+  lastLatitude      Float?
+  lastLongitude     Float?
+  lastLocationAt    DateTime?
 
   user              User           @relation(fields: [userId], references: [id])
   club              Club?          @relation("JugadoresClub", fields: [clubId], references: [id])
@@ -122,6 +126,7 @@ model Club {
   createdAt      DateTime       @default(now())
   logoUrl        String?
   shortCode      String         @unique
+  planActivo     Boolean        @default(false)
 
   delegates      User[]         @relation("DelegadosClub")
   players        Player[]       @relation("JugadoresClub")
@@ -142,8 +147,13 @@ model Tournament {
   availableSlots    Int
   registrationFee   Float
   status            TournamentStatus @default(draft)
-  description       String?
-  rulesJson         Json?
+  description           String?
+  eloEligible           Boolean          @default(false)
+  requirements          Json
+  latitude              Float?
+  longitude             Float?
+  notificationRadius    Int?
+  geoNotificationActive Boolean          @default(false)
 
   organizer         Club             @relation(fields: [organizerId], references: [id])
   registrations     Registration[]
@@ -188,6 +198,7 @@ model Game {
   moves             String?
   notes             String?
   durationSeconds   Int?
+  eloEligible       Boolean    @default(false)
 
   tournament        Tournament @relation(fields: [tournamentId], references: [id])
   whitePlayer       Player     @relation("JugadorBlanco", fields: [whitePlayerId], references: [id])
@@ -273,9 +284,9 @@ model TournamentResult {
   drawsAsBlack      Int      @default(0)
   lossesAsBlack     Int      @default(0)
   performanceRating Int?
+  eloEligible       Boolean  @default(false)
   isFideRated       Boolean  @default(false)
   isFadaRated       Boolean  @default(false)
-  isOnlineRated     Boolean  @default(false)
   eloChangeFide     Int?
   eloChangeFada     Int?
   eloChangeOnline   Int?

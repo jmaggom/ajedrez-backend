@@ -1,6 +1,6 @@
 import { GraphQLError } from "graphql";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import * as bcrypt from "bcryptjs";
+import * as jwt from "jsonwebtoken";
 import type { StringValue } from "ms";
 import { User } from "@prisma/client";
 import { EmailLoginInput, RegisterPlayerInput, RegisterDelegateInput } from "./auth.types";
