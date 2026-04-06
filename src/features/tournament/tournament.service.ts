@@ -1,6 +1,7 @@
 import { GraphQLError } from 'graphql';
-import { Role, RegistrationStatus } from '@prisma/client';
+import { LicenseStatus, LicenseType, Role, RegistrationStatus, TournamentStatus } from '@prisma/client';
 import * as tournamentModel from './tournament.model';
+import { FREEMIUM_MAX_ACTIVE_TOURNAMENTS } from './constants';
 import type {
   CreateTournamentInput,
   DeleteTournamentResult,
@@ -65,7 +66,7 @@ export const createTournament = async (
     if (!user.clubId)
       throw new GraphQLError('No club assigned', { extensions: { code: 'NO_CLUB_ASSIGNED' } });
     const activeCount = await tournamentModel.countActiveTournamentsByOrganizer(user.clubId);
-    if (activeCount >= 3)
+    if (activeCount >= FREEMIUM_MAX_ACTIVE_TOURNAMENTS)
       throw new GraphQLError('Active tournament limit reached', { extensions: { code: 'FREEMIUM_LIMIT_REACHED' } });
   }
 
@@ -126,7 +127,7 @@ export const registerTournament = async (
   if (!tournament)
     throw new GraphQLError('Tournament not found', { extensions: { code: 'NOT_FOUND' } });
 
-  if (tournament.status !== 'open')
+  if (tournament.status !== TournamentStatus.open)
     throw new GraphQLError('Tournament is not open for registration', {
       extensions: { code: 'TOURNAMENT_NOT_OPEN' },
     });
@@ -146,7 +147,7 @@ export const registerTournament = async (
 
   if (requirements.requireFideId) {
     const hasActiveFide = player.licenses.some(
-      (l) => l.type === 'fide' && l.status === 'active',
+      (l) => l.type === LicenseType.fide && l.status === LicenseStatus.active,
     );
     if (!hasActiveFide)
       throw new GraphQLError('FIDE license required', {
@@ -156,7 +157,7 @@ export const registerTournament = async (
 
   if (requirements.requireFadaId) {
     const hasActiveFada = player.licenses.some(
-      (l) => l.type === 'fada' && l.status === 'active',
+      (l) => l.type === LicenseType.fada && l.status === LicenseStatus.active,
     );
     if (!hasActiveFada)
       throw new GraphQLError('FADA license required', {
