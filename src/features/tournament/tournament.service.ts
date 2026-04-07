@@ -24,11 +24,11 @@ const validateEloFilter = (
 ): void => {
   const checks: Array<{ min?: number; max?: number; value: number }> = [
     { min: eloFilter.minFideClassical, max: eloFilter.maxFideClassical, value: elo.fideClassical },
-    { min: eloFilter.minFideRapid,     max: eloFilter.maxFideRapid,     value: elo.fideRapid },
-    { min: eloFilter.minFideBlitz,     max: eloFilter.maxFideBlitz,     value: elo.fideBlitz },
+    { min: eloFilter.minFideRapid, max: eloFilter.maxFideRapid, value: elo.fideRapid },
+    { min: eloFilter.minFideBlitz, max: eloFilter.maxFideBlitz, value: elo.fideBlitz },
     { min: eloFilter.minFadaClassical, max: eloFilter.maxFadaClassical, value: elo.fadaClassical },
-    { min: eloFilter.minFadaRapid,     max: eloFilter.maxFadaRapid,     value: elo.fadaRapid },
-    { min: eloFilter.minFadaBlitz,     max: eloFilter.maxFadaBlitz,     value: elo.fadaBlitz },
+    { min: eloFilter.minFadaRapid, max: eloFilter.maxFadaRapid, value: elo.fadaRapid },
+    { min: eloFilter.minFadaBlitz, max: eloFilter.maxFadaBlitz, value: elo.fadaBlitz },
   ];
 
   for (const { min, max, value } of checks) {
@@ -95,7 +95,7 @@ export const createTournament = async (
         sendPushNotification({
           userId: p.userId,
           type: NotificationType.tournament,
-          title: '¡Nuevo torneo cerca de vos!',
+          title: '¡Nuevo torneo cerca!',
           message: `${input.name} se jugará en ${input.venue}.`,
           data: { tournamentId: String(tournament.id) },
         }),
