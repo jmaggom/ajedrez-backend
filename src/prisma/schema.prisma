@@ -66,6 +66,12 @@ enum NotificationType {
   system
 }
 
+enum NotificationStatus {
+  pending
+  sent
+  failed
+}
+
 enum EloSource {
   fide_api
   fada_api
@@ -81,6 +87,7 @@ model User {
   role           Role
   fullName       String
   phone          String?
+  pushToken      String?
   createdAt      DateTime       @default(now())
   clubId         Int?
 
@@ -298,14 +305,15 @@ model TournamentResult {
 }
 
 model Notification {
-  id             Int               @id @default(autoincrement())
+  id             Int                  @id @default(autoincrement())
   userId         Int
   type           NotificationType
+  status         NotificationStatus   @default(pending)
   title          String
   message        String
   dataJson       Json?
-  isRead         Boolean           @default(false)
-  createdAt      DateTime          @default(now())
+  isRead         Boolean              @default(false)
+  createdAt      DateTime             @default(now())
 
-  user           User              @relation(fields: [userId], references: [id])
+  user           User                 @relation(fields: [userId], references: [id])
 }
