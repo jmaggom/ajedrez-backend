@@ -1,6 +1,8 @@
 import { GraphQLError } from 'graphql';
 import { LicenseStatus, LicenseType, Role, RegistrationStatus, TournamentStatus } from '@prisma/client';
 import * as tournamentModel from './tournament.model';
+import { NotificationType } from '@prisma/client';
+import { sendPushNotification } from '../../common/notification/notification.service';
 import { FREEMIUM_MAX_ACTIVE_TOURNAMENTS } from './constants';
 import type {
   CreateTournamentInput,
@@ -80,7 +82,28 @@ export const createTournament = async (
       });
   }
 
-  return tournamentModel.createTournament(organizerId, input);
+  const tournament = await tournamentModel.createTournament(organizerId, input);
+
+  if (input.geoNotificationActive && input.latitude && input.longitude && input.notificationRadius) {
+    const nearbyPlayers = await tournamentModel.findPlayersInRadius(
+      input.latitude,
+      input.longitude,
+      input.notificationRadius,
+    );
+    await Promise.allSettled(
+      nearbyPlayers.map((p) =>
+        sendPushNotification({
+          userId: p.userId,
+          type: NotificationType.tournament,
+          title: '¡Nuevo torneo cerca de vos!',
+          message: `${input.name} se jugará en ${input.venue}.`,
+          data: { tournamentId: String(tournament.id) },
+        }),
+      ),
+    );
+  }
+
+  return tournament;
 };
 
 export const updateTournament = async (
@@ -176,6 +199,13 @@ export const registerTournament = async (
       tournamentId,
       RegistrationStatus.pending,
     );
+    await sendPushNotification({
+      userId,
+      type: NotificationType.registration,
+      title: 'Inscripción registrada',
+      message: `Tu inscripción en ${tournament.name} está pendiente de confirmación.`,
+      data: { tournamentId: String(tournamentId) },
+    });
     return { registration };
   }
 
