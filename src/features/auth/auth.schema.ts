@@ -31,5 +31,6 @@ export const authTypeDefs = `
     emailLogin(input: EmailLoginInput!): AuthResponse!
     registerPlayer(input: RegisterPlayerInput!): AuthResponse!
     registerDelegate(input: RegisterDelegateInput!): AuthResponse!
+    savePushToken(token: String!): Boolean!
   }
 `

@@ -48,6 +48,11 @@ export const registerPlayer = async (input: RegisterPlayerInput): Promise<{ mTok
     return { mToken: buildToken(user) };
 };
 
+export const savePushToken = async (userId: number, token: string): Promise<boolean> => {
+    await authModel.updateUserPushToken(userId, token);
+    return true;
+};
+
 export const registerDelegate = async (input: RegisterDelegateInput): Promise<{ mToken: string }> => {
     const existing = await authModel.findUserByEmail(input.email);
     if (existing) {
