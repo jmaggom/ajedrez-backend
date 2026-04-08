@@ -71,7 +71,7 @@ export const tournamentTypeDefs = `
   type Registration {
     id: ID!
     tournament: Tournament!
-    player: Player!
+    player: PlayerProfile!
     status: RegistrationStatus!
     paymentStatus: PaymentStatus!
     method: RegistrationMethod!
