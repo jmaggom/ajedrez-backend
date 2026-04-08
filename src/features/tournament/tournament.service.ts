@@ -1,6 +1,8 @@
 import { GraphQLError } from 'graphql';
 import { LicenseStatus, LicenseType, Role, RegistrationStatus, TournamentStatus } from '@prisma/client';
 import * as tournamentModel from './tournament.model';
+import { NotificationType } from '@prisma/client';
+import { sendPushNotification } from '../../common/notification/notification.service';
 import { FREEMIUM_MAX_ACTIVE_TOURNAMENTS } from './constants';
 import type {
   CreateTournamentInput,
@@ -22,11 +24,11 @@ const validateEloFilter = (
 ): void => {
   const checks: Array<{ min?: number; max?: number; value: number }> = [
     { min: eloFilter.minFideClassical, max: eloFilter.maxFideClassical, value: elo.fideClassical },
-    { min: eloFilter.minFideRapid,     max: eloFilter.maxFideRapid,     value: elo.fideRapid },
-    { min: eloFilter.minFideBlitz,     max: eloFilter.maxFideBlitz,     value: elo.fideBlitz },
+    { min: eloFilter.minFideRapid, max: eloFilter.maxFideRapid, value: elo.fideRapid },
+    { min: eloFilter.minFideBlitz, max: eloFilter.maxFideBlitz, value: elo.fideBlitz },
     { min: eloFilter.minFadaClassical, max: eloFilter.maxFadaClassical, value: elo.fadaClassical },
-    { min: eloFilter.minFadaRapid,     max: eloFilter.maxFadaRapid,     value: elo.fadaRapid },
-    { min: eloFilter.minFadaBlitz,     max: eloFilter.maxFadaBlitz,     value: elo.fadaBlitz },
+    { min: eloFilter.minFadaRapid, max: eloFilter.maxFadaRapid, value: elo.fadaRapid },
+    { min: eloFilter.minFadaBlitz, max: eloFilter.maxFadaBlitz, value: elo.fadaBlitz },
   ];
 
   for (const { min, max, value } of checks) {
@@ -80,7 +82,28 @@ export const createTournament = async (
       });
   }
 
-  return tournamentModel.createTournament(organizerId, input);
+  const tournament = await tournamentModel.createTournament(organizerId, input);
+
+  if (input.geoNotificationActive && input.latitude && input.longitude && input.notificationRadius) {
+    const nearbyPlayers = await tournamentModel.findPlayersInRadius(
+      input.latitude,
+      input.longitude,
+      input.notificationRadius,
+    );
+    await Promise.allSettled(
+      nearbyPlayers.map((p) =>
+        sendPushNotification({
+          userId: p.userId,
+          type: NotificationType.tournament,
+          title: '¡Nuevo torneo cerca!',
+          message: `${input.name} se jugará en ${input.venue}.`,
+          data: { tournamentId: String(tournament.id) },
+        }),
+      ),
+    );
+  }
+
+  return tournament;
 };
 
 export const updateTournament = async (
@@ -176,6 +199,13 @@ export const registerTournament = async (
       tournamentId,
       RegistrationStatus.pending,
     );
+    await sendPushNotification({
+      userId,
+      type: NotificationType.registration,
+      title: 'Inscripción registrada',
+      message: `Tu inscripción en ${tournament.name} está pendiente de confirmación.`,
+      data: { tournamentId: String(tournamentId) },
+    });
     return { registration };
   }
 

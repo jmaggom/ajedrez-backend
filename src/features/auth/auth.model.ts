@@ -36,6 +36,10 @@ export const createUserWithPlayer = async (data: {
     });
 };
 
+export const updateUserPushToken = async (userId: number, pushToken: string): Promise<void> => {
+    await prisma.user.update({ where: { id: userId }, data: { pushToken } });
+};
+
 export const createDelegate = async (data: {
     email: string;
     hashedPassword: string;

@@ -208,6 +208,24 @@ const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
+export const findPlayersInRadius = async (
+  lat: number,
+  lng: number,
+  radiusKm: number,
+): Promise<Array<{ userId: number }>> => {
+  const players = await prisma.player.findMany({
+    where: {
+      lastLatitude: { not: null },
+      lastLongitude: { not: null },
+    },
+    select: { userId: true, lastLatitude: true, lastLongitude: true },
+  });
+
+  return players.filter(
+    (p) => haversineKm(lat, lng, p.lastLatitude!, p.lastLongitude!) <= radiusKm,
+  );
+};
+
 export const findNearbyTournaments = async (
   lat: number,
   lng: number,
