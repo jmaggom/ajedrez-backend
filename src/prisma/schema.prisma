@@ -70,6 +70,7 @@ enum NotificationStatus {
   pending
   sent
   failed
+  skipped
 }
 
 enum EloSource {
@@ -316,4 +317,6 @@ model Notification {
   createdAt      DateTime             @default(now())
 
   user           User                 @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt(sort: Desc)])
 }
