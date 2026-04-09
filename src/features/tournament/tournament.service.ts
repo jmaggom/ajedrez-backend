@@ -2,7 +2,7 @@ import { GraphQLError } from 'graphql';
 import { LicenseStatus, LicenseType, Role, RegistrationStatus, TournamentStatus } from '@prisma/client';
 import * as tournamentModel from './tournament.model';
 import { NotificationType } from '@prisma/client';
-import { sendPushNotification } from '../../common/notification/notification.service';
+import { sendPushNotification, sendBatchPushNotifications } from '../../common/notification/notification.service';
 import { FREEMIUM_MAX_ACTIVE_TOURNAMENTS } from './constants';
 import type {
   CreateTournamentInput,
@@ -90,17 +90,17 @@ export const createTournament = async (
       input.longitude,
       input.notificationRadius,
     );
-    await Promise.allSettled(
-      nearbyPlayers.map((p) =>
-        sendPushNotification({
+    try {
+      await sendBatchPushNotifications(
+        nearbyPlayers.map((p) => ({
           userId: p.userId,
           type: NotificationType.tournament,
           title: '¡Nuevo torneo cerca!',
           message: `${input.name} se jugará en ${input.venue}.`,
           data: { tournamentId: String(tournament.id) },
-        }),
-      ),
-    );
+        })),
+      );
+    } catch { /* notification failure must not break tournament creation */ }
   }
 
   return tournament;
@@ -199,13 +199,15 @@ export const registerTournament = async (
       tournamentId,
       RegistrationStatus.pending,
     );
-    await sendPushNotification({
-      userId,
-      type: NotificationType.registration,
-      title: 'Inscripción registrada',
-      message: `Tu inscripción en ${tournament.name} está pendiente de confirmación.`,
-      data: { tournamentId: String(tournamentId) },
-    });
+    try {
+      await sendPushNotification({
+        userId,
+        type: NotificationType.registration,
+        title: 'Inscripción registrada',
+        message: `Tu inscripción en ${tournament.name} está pendiente de confirmación.`,
+        data: { tournamentId: String(tournamentId) },
+      });
+    } catch { /* notification failure must not break registration */ }
     return { registration };
   }
 
@@ -215,6 +217,15 @@ export const registerTournament = async (
     RegistrationStatus.waitlist,
   );
   const waitlistPosition = await tournamentModel.countWaitlistRegistrations(tournamentId);
+  try {
+    await sendPushNotification({
+      userId,
+      type: NotificationType.registration,
+      title: 'En lista de espera',
+      message: `Estás en la lista de espera para ${tournament.name}. Tu posición es #${waitlistPosition}.`,
+      data: { tournamentId: String(tournamentId) },
+    });
+  } catch { /* notification failure must not break registration */ }
   return { registration, waitlistPosition };
 };
 
@@ -252,11 +263,21 @@ export const cancelRegistration = async (
 
   await tournamentModel.updateRegistrationStatus(registrationId, RegistrationStatus.cancelled);
 
-  const nextInWaitlist = await tournamentModel.findFirstWaitlistRegistration(
+  const nextInWaitlist = await tournamentModel.findFirstWaitlistRegistrationWithPlayer(
     registration.tournamentId,
   );
-  if (nextInWaitlist)
+  if (nextInWaitlist) {
     await tournamentModel.updateRegistrationStatus(nextInWaitlist.id, RegistrationStatus.pending);
+    try {
+      await sendPushNotification({
+        userId: nextInWaitlist.player.userId,
+        type: NotificationType.registration,
+        title: '¡Plaza disponible!',
+        message: `Se liberó un lugar en ${registration.tournament.name}. Tu inscripción pasó a pendiente de confirmación.`,
+        data: { tournamentId: String(registration.tournamentId) },
+      });
+    } catch { /* notification failure must not break cancellation */ }
+  }
 
   return true;
 };
