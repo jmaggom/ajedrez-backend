@@ -130,6 +130,16 @@ export const findFirstWaitlistRegistration = async (
   });
 };
 
+export const findFirstWaitlistRegistrationWithPlayer = async (
+  tournamentId: number,
+): Promise<(Registration & { player: { userId: number } }) | null> => {
+  return prisma.registration.findFirst({
+    where: { tournamentId, status: RegistrationStatus.waitlist },
+    orderBy: { registeredAt: 'asc' },
+    include: { player: { select: { userId: true } } },
+  });
+};
+
 export const createTournament = async (
   organizerId: number,
   input: CreateTournamentInput,
