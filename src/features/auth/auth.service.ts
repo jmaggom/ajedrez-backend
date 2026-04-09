@@ -49,6 +49,10 @@ export const registerPlayer = async (input: RegisterPlayerInput): Promise<{ mTok
 };
 
 export const savePushToken = async (userId: number, token: string): Promise<boolean> => {
+    const { Expo } = await import('expo-server-sdk');
+    if (!Expo.isExpoPushToken(token)) {
+        throw new GraphQLError('Invalid Expo push token', { extensions: { code: 'BAD_USER_INPUT' } });
+    }
     await authModel.updateUserPushToken(userId, token);
     return true;
 };
