@@ -1,4 +1,5 @@
-import { NotificationStatus } from '@prisma/client';
+import { GraphQLError } from 'graphql';
+import { Notification, NotificationStatus } from '@prisma/client';
 import { prisma } from '../../config/database';
 import { NotificationInput } from './notification.types';
 
@@ -27,5 +28,37 @@ export const updateNotificationStatus = async (
   await prisma.notification.update({
     where: { id },
     data: { status },
+  });
+};
+
+export const findUserNotifications = async (
+  userId: number,
+  limit: number,
+  offset: number,
+): Promise<Notification[]> => {
+  return prisma.notification.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+    skip: offset,
+  });
+};
+
+export const markNotificationAsRead = async (
+  notificationId: number,
+  userId: number,
+): Promise<void> => {
+  const notification = await prisma.notification.findUnique({
+    where: { id: notificationId },
+    select: { userId: true },
+  });
+
+  if (!notification || notification.userId !== userId) {
+    throw new GraphQLError('Notification not found', { extensions: { code: 'NOT_FOUND' } });
+  }
+
+  await prisma.notification.update({
+    where: { id: notificationId },
+    data: { isRead: true },
   });
 };
