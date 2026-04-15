@@ -1,5 +1,5 @@
 import { GraphQLError } from "graphql";
-import { UpdateProfileInput, UserProfile, SyncFideDataResponse } from "./user.types";
+import { UpdateProfileInput, UserProfile, toUserRole } from "./user.types";
 import { UserWithPlayer } from "./user.types";
 import * as userModel from "./user.model";
 import { fetchFidePlayerInfo } from "../../common/clients/chesstools.client";
@@ -8,7 +8,7 @@ import { FideHistoryEntry } from "../../common/clients/chesstools.types";
 const toUserProfile = (user: UserWithPlayer): UserProfile => ({
     id: user.id,
     email: user.email,
-    role: user.role,
+    role: toUserRole(user.role),
     fullName: user.fullName,
     phone: user.phone ?? null,
     player: user.player
@@ -100,7 +100,7 @@ export const updateProfile = async (
     return toUserProfile(user);
 };
 
-export const syncFideData = async (userId: number): Promise<SyncFideDataResponse> => {
+export const syncFideData = async (userId: number): Promise<UserProfile> => {
     const user = await userModel.findUserById(userId);
     if (!user) {
         throw new GraphQLError("User not found", { extensions: { code: "NOT_FOUND" } });
@@ -155,13 +155,9 @@ export const syncFideData = async (userId: number): Promise<SyncFideDataResponse
         historyEntries,
     });
 
-    return {
-        name: fideData.name,
-        federation: fideData.federation,
-        birthYear: fideData.birth_year,
-        currentClassical: latest?.classical_rating ?? null,
-        currentRapid: latest?.rapid_rating ?? null,
-        currentBlitz: latest?.blitz_rating ?? null,
-        historySynced: historyEntries.length,
-    };
+    const updatedUser = await userModel.findUserById(userId);
+    if (!updatedUser) {
+        throw new GraphQLError("User not found after sync", { extensions: { code: "INTERNAL_SERVER_ERROR" } });
+    }
+    return toUserProfile(updatedUser);
 };

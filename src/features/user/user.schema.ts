@@ -1,4 +1,11 @@
 export const userTypeDefs = `
+  enum UserRole {
+    ADMIN
+    DELEGATE
+    PLAYER
+    REFEREE
+  }
+
   type EloProfile {
     fideClassical: Int!
     fideRapid: Int!
@@ -45,7 +52,7 @@ export const userTypeDefs = `
   type UserProfile {
     id: Int!
     email: String!
-    role: String!
+    role: UserRole!
     fullName: String!
     phone: String
     player: PlayerProfile
@@ -62,18 +69,8 @@ export const userTypeDefs = `
     me: UserProfile!
   }
 
-  type SyncFideDataResponse {
-    name: String!
-    federation: String!
-    birthYear: Int!
-    currentClassical: Int
-    currentRapid: Int
-    currentBlitz: Int
-    historySynced: Int!
-  }
-
   extend type Mutation {
     updateProfile(input: UpdateProfileInput!): UserProfile!
-    syncFideData: SyncFideDataResponse!
+    syncFideData: UserProfile!
   }
 `;

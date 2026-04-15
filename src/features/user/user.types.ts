@@ -1,5 +1,25 @@
 import { Prisma } from "@prisma/client";
 
+export enum UserRole {
+    ADMIN = 'ADMIN',
+    DELEGATE = 'DELEGATE',
+    PLAYER = 'PLAYER',
+    REFEREE = 'REFEREE',
+}
+
+const PRISMA_ROLE_MAP: Record<string, UserRole> = {
+    admin: UserRole.ADMIN,
+    delegate: UserRole.DELEGATE,
+    player: UserRole.PLAYER,
+    referee: UserRole.REFEREE,
+};
+
+export const toUserRole = (prismaRole: string): UserRole => {
+    const mapped = PRISMA_ROLE_MAP[prismaRole];
+    if (!mapped) throw new Error(`Unknown role: ${prismaRole}`);
+    return mapped;
+};
+
 export type UpdateProfileInput = {
     fullName?: string;
     phone?: string;
@@ -53,7 +73,7 @@ export type PlayerProfile = {
 export type UserProfile = {
     id: number;
     email: string;
-    role: string;
+    role: UserRole;
     fullName: string;
     phone: string | null;
     player: PlayerProfile | null;
@@ -102,12 +122,3 @@ export type SyncPlayerFideDataInput = {
     }>;
 };
 
-export type SyncFideDataResponse = {
-    name: string;
-    federation: string;
-    birthYear: number;
-    currentClassical: number | null;
-    currentRapid: number | null;
-    currentBlitz: number | null;
-    historySynced: number;
-};
