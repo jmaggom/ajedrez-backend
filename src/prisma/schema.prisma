@@ -152,6 +152,7 @@ model Tournament {
   format            String
   rounds            Int
   timeControl       String
+  mode              String    @default("classical")
   availableSlots    Int
   registrationFee   Float
   status            TournamentStatus @default(draft)
