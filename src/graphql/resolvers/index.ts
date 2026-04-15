@@ -15,4 +15,6 @@ export const resolvers = {
         ...tournamentResolvers.Mutation,
         ...notificationResolvers.Mutation,
     },
+    Tournament: tournamentResolvers.Tournament,
+    Registration: tournamentResolvers.Registration,
 }
