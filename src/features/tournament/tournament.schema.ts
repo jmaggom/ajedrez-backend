@@ -1,4 +1,10 @@
 export const tournamentTypeDefs = `
+  enum TournamentMode {
+    CLASSICAL
+    RAPID
+    BLITZ
+  }
+
   enum TournamentStatus {
     DRAFT
     OPEN
@@ -58,6 +64,7 @@ export const tournamentTypeDefs = `
     format: String!
     rounds: Int!
     timeControl: String!
+    mode: TournamentMode!
     availableSlots: Int!
     registrationFee: Float!
     status: TournamentStatus!
@@ -128,6 +135,7 @@ export const tournamentTypeDefs = `
     format: String!
     rounds: Int!
     timeControl: String!
+    mode: TournamentMode!
     availableSlots: Int!
     registrationFee: Float!
     description: String
@@ -147,6 +155,7 @@ export const tournamentTypeDefs = `
     format: String
     rounds: Int
     timeControl: String
+    mode: TournamentMode
     availableSlots: Int
     registrationFee: Float
     description: String
@@ -156,6 +165,7 @@ export const tournamentTypeDefs = `
 
   input TournamentFiltersInput {
     status: TournamentStatus
+    mode: TournamentMode
     name: String
     dateFrom: String
     dateTo: String

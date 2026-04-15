@@ -8,12 +8,20 @@ import type {
 } from './tournament.types';
 
 export const tournamentResolvers = {
+  Tournament: {
+    status: (parent: { status: string }) => parent.status.toUpperCase(),
+    mode: (parent: { mode: string }) => parent.mode.toUpperCase(),
+  },
+  Registration: {
+    status: (parent: { status: string }) => parent.status.toUpperCase(),
+    paymentStatus: (parent: { paymentStatus: string }) => parent.paymentStatus.toUpperCase(),
+  },
   Query: {
     tournaments: (
       _: unknown,
-      { filters }: { filters?: TournamentFiltersInput },
+      { filters, page, limit }: { filters?: TournamentFiltersInput; page?: number; limit?: number },
       _ctx: Context,
-    ) => tournamentService.getTournaments(filters ?? {}),
+    ) => tournamentService.getTournaments({ ...filters, page, limit }),
 
     tournament: (
       _: unknown,

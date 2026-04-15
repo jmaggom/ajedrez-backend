@@ -23,7 +23,21 @@ export const findTournaments = async (
 
   const where: Prisma.TournamentWhereInput = {};
 
-  if (filters.status) where.status = filters.status as TournamentStatus;
+  const statusMap: Record<string, TournamentStatus> = {
+    OPEN: TournamentStatus.open,
+    DRAFT: TournamentStatus.draft,
+    IN_PROGRESS: TournamentStatus.in_progress,
+    FINISHED: TournamentStatus.finished,
+  };
+  if (filters.status && statusMap[filters.status]) where.status = statusMap[filters.status];
+
+  const modeMap: Record<string, string> = {
+    CLASSICAL: 'classical',
+    RAPID: 'rapid',
+    BLITZ: 'blitz',
+  };
+  if (filters.mode && modeMap[filters.mode]) where.mode = modeMap[filters.mode];
+
   if (filters.name) where.name = { contains: filters.name, mode: 'insensitive' };
   if (filters.dateFrom || filters.dateTo) {
     where.startDate = {};
