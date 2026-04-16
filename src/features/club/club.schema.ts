@@ -1,0 +1,106 @@
+export const clubTypeDefs = `
+  type ClubDelegate {
+    id: ID!
+    fullName: String!
+    email: String!
+    phone: String
+  }
+
+  type ClubPlayerElo {
+    fadaClassical: Int!
+    fideClassical: Int!
+  }
+
+  type PlayerLicense {
+    id: ID!
+    type: String!
+    status: String!
+    expiresAt: String!
+  }
+
+  type ClubPlayer {
+    id: ID!
+    fullName: String!
+    fideId: String
+    clubId: ID
+    elo: ClubPlayerElo
+    licenses: [PlayerLicense!]!
+    lastActivity: String
+  }
+
+  type Club {
+    id: ID!
+    name: String!
+    CIF: String!
+    address: String!
+    phone: String!
+    email: String!
+    website: String
+    description: String
+    logoUrl: String
+    shortCode: String!
+    createdAt: String!
+    delegates: [ClubDelegate!]!
+    players: [ClubPlayer!]!
+  }
+
+  type PendingPaymentTournament {
+    id: ID!
+    name: String!
+    startDate: String!
+  }
+
+  type PendingPaymentRegistration {
+    id: ID!
+    player: ClubDelegate!
+    tournament: PendingPaymentTournament!
+  }
+
+  type PendingPayment {
+    id: ID!
+    amount: Float!
+    date: String!
+    fileUrl: String!
+    status: String!
+    registration: PendingPaymentRegistration!
+  }
+
+  type ExpiringLicense {
+    id: ID!
+    player: ClubDelegate!
+    type: String!
+    expiresAt: String!
+  }
+
+  type DelegateDashboard {
+    pendingPaymentsCount: Int!
+    recentRegistrations: [Registration!]!
+    expiringLicenses: [ExpiringLicense!]!
+  }
+
+  input UpdateClubInput {
+    name: String
+    address: String
+    phone: String
+    email: String
+    website: String
+    description: String
+    logoUrl: String
+  }
+
+  extend type Query {
+    club(id: ID!): Club
+    myClub: Club
+    delegateDashboard: DelegateDashboard!
+    pendingPayments(tournamentId: ID): [PendingPayment!]!
+    expiringLicenses(daysThreshold: Int): [ExpiringLicense!]!
+  }
+
+  extend type Mutation {
+    updateClub(input: UpdateClubInput!): Club!
+    addPlayerToClub(playerId: ID!): Club!
+    removePlayerFromClub(playerId: ID!): Club!
+    validatePayment(paymentReceiptId: ID!): PendingPayment!
+    rejectPayment(paymentReceiptId: ID!, reason: String!): PendingPayment!
+  }
+`;
