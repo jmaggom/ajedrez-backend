@@ -1,5 +1,5 @@
 import { prisma } from '../../config/database';
-import { LicenseStatus, PaymentStatus } from '@prisma/client';
+import { LicenseStatus, PaymentStatus, Role } from '@prisma/client';
 import {
   clubSelect,
   paymentReceiptSelect,
@@ -16,7 +16,7 @@ export const findClubByDelegateUserId = async (userId: number): Promise<ClubWith
   return prisma.club.findFirst({
     where: {
       delegates: {
-        some: { id: userId },
+        some: { id: userId, role: Role.delegate },
       },
     },
     select: clubSelect,
