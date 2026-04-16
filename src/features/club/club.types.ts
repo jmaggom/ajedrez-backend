@@ -71,6 +71,7 @@ export const paymentReceiptSelect = {
           id: true,
           name: true,
           startDate: true,
+          organizerId: true,
         },
       },
     },
