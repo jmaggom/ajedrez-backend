@@ -64,6 +64,7 @@ enum NotificationType {
   registration
   payment
   system
+  result
 }
 
 enum NotificationStatus {
@@ -79,6 +80,12 @@ enum EloSource {
   online_api
 }
 
+enum GameResult {
+  white_wins
+  black_wins
+  draw
+}
+
 // ─── MODELOS ──────────────────────────────────────────────────────
 
 model User {
@@ -92,10 +99,13 @@ model User {
   createdAt      DateTime       @default(now())
   clubId         Int?
 
-  club           Club?          @relation("DelegadosClub", fields: [clubId], references: [id])
-  player         Player?
-  sessions       MobileSession[]
-  notifications  Notification[]
+  club                 Club?            @relation("DelegadosClub", fields: [clubId], references: [id])
+  player               Player?
+  sessions             MobileSession[]
+  notifications        Notification[]
+  gamesRegistered      Game[]           @relation("GameRegisteredBy")
+  paymentsValidated    PaymentReceipt[] @relation("PaymentValidatedBy")
+  registrationsMade    Registration[]   @relation("RegistrationRegisteredBy")
 }
 
 model Player {
@@ -135,6 +145,8 @@ model Club {
   logoUrl        String?
   shortCode      String         @unique
   planActivo     Boolean        @default(false)
+  website        String?
+  description    String?
 
   delegates      User[]         @relation("DelegadosClub")
   players        Player[]       @relation("JugadoresClub")
@@ -178,10 +190,12 @@ model Registration {
   status           RegistrationStatus @default(pending)
   paymentStatus    PaymentStatus      @default(pending)
   method           RegistrationMethod @default(self)
+  registeredById   Int?
 
   player           Player             @relation(fields: [playerId], references: [id])
   tournament       Tournament         @relation(fields: [tournamentId], references: [id])
   paymentReceipt   PaymentReceipt?
+  registeredBy     User?              @relation("RegistrationRegisteredBy", fields: [registeredById], references: [id])
 }
 
 model PaymentReceipt {
@@ -192,9 +206,12 @@ model PaymentReceipt {
   date             DateTime       @default(now())
   status           PaymentStatus  @default(pending)
   fileUrl          String
+  validatedById    Int?
+  validatedAt      DateTime?
 
   registration     Registration?  @relation(fields: [registrationId], references: [id])
   license          License?       @relation(fields: [licenseId], references: [id])
+  validatedBy      User?          @relation("PaymentValidatedBy", fields: [validatedById], references: [id])
 }
 
 model Game {
@@ -203,15 +220,17 @@ model Game {
   roundNumber       Int
   whitePlayerId     Int
   blackPlayerId     Int
-  result            String
+  result            GameResult?
   moves             String?
   notes             String?
   durationSeconds   Int?
   eloEligible       Boolean    @default(false)
+  registeredById    Int?
 
   tournament        Tournament @relation(fields: [tournamentId], references: [id])
   whitePlayer       Player     @relation("JugadorBlanco", fields: [whitePlayerId], references: [id])
   blackPlayer       Player     @relation("JugadorNegro", fields: [blackPlayerId], references: [id])
+  registeredBy      User?      @relation("GameRegisteredBy", fields: [registeredById], references: [id])
 }
 
 model EloHistory {
@@ -243,6 +262,8 @@ model License {
 
   player           Player         @relation(fields: [playerId], references: [id])
   paymentReceipts  PaymentReceipt[]
+
+  @@index([expiresAt])
 }
 
 model MobileSession {
