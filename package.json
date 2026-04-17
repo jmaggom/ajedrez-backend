@@ -49,7 +49,7 @@
   },
   "lint-staged": {
     "*.ts": [
-      "tsc --noEmit",
+      "bash -c 'tsc --noEmit'",
       "eslint"
     ]
   },
