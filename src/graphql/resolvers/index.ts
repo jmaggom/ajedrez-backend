@@ -2,6 +2,8 @@ import { authResolvers } from "../../features/auth/auth.resolver";
 import { userResolvers } from "../../features/user/user.resolver";
 import { tournamentResolvers } from "../../features/tournament/tournament.resolver";
 import { clubResolvers } from "../../features/club/club.resolver";
+import { gameResolvers } from "../../features/game/game.resolver";
+import { paymentResolvers } from "../../features/payment/payment.resolver";
 import { notificationResolvers } from "../../features/notification/notification.resolver";
 
 export const resolvers = {
@@ -9,6 +11,8 @@ export const resolvers = {
         ...userResolvers.Query,
         ...tournamentResolvers.Query,
         ...clubResolvers.Query,
+        ...gameResolvers.Query,
+        ...paymentResolvers.Query,
         ...notificationResolvers.Query,
     },
     Mutation: {
@@ -16,6 +20,7 @@ export const resolvers = {
         ...userResolvers.Mutation,
         ...tournamentResolvers.Mutation,
         ...clubResolvers.Mutation,
+        ...gameResolvers.Mutation,
         ...notificationResolvers.Mutation,
     },
     Tournament: tournamentResolvers.Tournament,
