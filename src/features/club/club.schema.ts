@@ -72,10 +72,34 @@ export const clubTypeDefs = `
     expiresAt: String!
   }
 
+  type DashboardPlayer {
+    id: ID!
+    fullName: String!
+  }
+
+  type DashboardTournament {
+    id: ID!
+    name: String!
+    startDate: String!
+  }
+
+  type RecentRegistration {
+    id: ID!
+    player: DashboardPlayer!
+    tournament: DashboardTournament!
+    status: String!
+    registeredAt: String!
+  }
+
   type DelegateDashboard {
     pendingPaymentsCount: Int!
-    recentRegistrations: [Registration!]!
+    recentRegistrations: [RecentRegistration!]!
     expiringLicenses: [ExpiringLicense!]!
+  }
+
+  input ClubFiltersInput {
+    name: String
+    community: String
   }
 
   input UpdateClubInput {
@@ -89,6 +113,7 @@ export const clubTypeDefs = `
   }
 
   extend type Query {
+    clubs(filters: ClubFiltersInput): [Club!]!
     club(id: ID!): Club
     myClub: Club
     delegateDashboard: DelegateDashboard!

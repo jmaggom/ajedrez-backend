@@ -5,6 +5,11 @@ import type { UpdateClubInput } from './club.types';
 
 export const clubResolvers = {
   Query: {
+    clubs: (
+      _: unknown,
+      { filters }: { filters?: { name?: string; community?: string } },
+    ) => clubService.getClubs(filters),
+
     club: (
       _: unknown,
       { id }: { id: string },

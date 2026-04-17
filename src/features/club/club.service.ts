@@ -1,7 +1,19 @@
 import { GraphQLError } from 'graphql';
-import { PaymentStatus } from '@prisma/client';
+import { NotificationType, PaymentStatus } from '@prisma/client';
 import * as clubModel from './club.model';
+import { sendPushNotification } from '../../common/notification/notification.service';
 import type { ClubWithRelations, PaymentReceiptWithRelations, UpdateClubInput } from './club.types';
+
+export const getAllClubs = async (): Promise<ClubWithRelations[]> => {
+  return clubModel.findAllClubs();
+};
+
+export const getClubs = async (filters?: {
+  name?: string;
+  community?: string;
+}): Promise<ClubWithRelations[]> => {
+  return clubModel.findClubs(filters);
+};
 
 export const getClub = async (id: number): Promise<ClubWithRelations> => {
   const club = await clubModel.findClubById(id);
@@ -108,7 +120,29 @@ export const validatePayment = async (
     // TODO: migrar a union type ConflictError
     throw new GraphQLError('El comprobante ya fue procesado', { extensions: { code: 'CONFLICT' } });
 
-  return clubModel.updatePaymentStatus(paymentReceiptId, 'validated', userId, new Date());
+  const updatedReceipt = await clubModel.updatePaymentStatus(paymentReceiptId, 'validated', userId, new Date());
+
+  const playerUserId = receipt.registration?.player.userId;
+  const tournamentId = receipt.registration?.tournament.id;
+  const tournamentName = receipt.registration?.tournament.name;
+  if (playerUserId && tournamentId) {
+    try {
+      await sendPushNotification({
+        userId: playerUserId,
+        type: NotificationType.payment,
+        title: 'Pago validado',
+        message: `Tu comprobante de pago para ${tournamentName} ha sido validado`,
+        data: {
+          paymentReceiptId: String(paymentReceiptId),
+          tournamentId: String(tournamentId),
+        },
+      });
+    } catch (notifError) {
+      console.error('Push notification failed:', notifError);
+    }
+  }
+
+  return updatedReceipt;
 };
 
 export const rejectPayment = async (
@@ -131,10 +165,30 @@ export const rejectPayment = async (
   if (receipt.status !== PaymentStatus.pending)
     throw new GraphQLError('El comprobante ya fue procesado', { extensions: { code: 'CONFLICT' } });
 
-  console.log('Rechazo:', reason);
-  // TODO: crear notificación al jugador
+  const updatedReceipt = await clubModel.updatePaymentStatus(paymentReceiptId, 'rejected', userId, new Date());
 
-  return clubModel.updatePaymentStatus(paymentReceiptId, 'rejected', userId, new Date());
+  const playerUserId = receipt.registration?.player.userId;
+  const tournamentId = receipt.registration?.tournament.id;
+  const tournamentName = receipt.registration?.tournament.name;
+  if (playerUserId && tournamentId) {
+    try {
+      await sendPushNotification({
+        userId: playerUserId,
+        type: NotificationType.payment,
+        title: 'Pago rechazado',
+        message: `Tu comprobante de pago para ${tournamentName} ha sido rechazado. Motivo: ${reason}`,
+        data: {
+          paymentReceiptId: String(paymentReceiptId),
+          tournamentId: String(tournamentId),
+          reason,
+        },
+      });
+    } catch (notifError) {
+      console.error('Push notification failed:', notifError);
+    }
+  }
+
+  return updatedReceipt;
 };
 
 export const getExpiringLicenses = async (userId: number, daysThreshold = 30) => {

@@ -8,6 +8,28 @@ import {
   type UpdateClubInput,
 } from './club.types';
 
+export const findAllClubs = async (): Promise<ClubWithRelations[]> => {
+  return prisma.club.findMany({ select: clubSelect, orderBy: { name: 'asc' } });
+};
+
+export const findClubs = async (filters?: {
+  name?: string;
+  community?: string;
+}): Promise<ClubWithRelations[]> => {
+  return prisma.club.findMany({
+    where: {
+      ...(filters?.name && {
+        name: { contains: filters.name, mode: 'insensitive' },
+      }),
+      ...(filters?.community && {
+        address: { contains: filters.community, mode: 'insensitive' },
+      }),
+    },
+    select: clubSelect,
+    orderBy: { name: 'asc' },
+  });
+};
+
 export const findClubById = async (id: number): Promise<ClubWithRelations | null> => {
   return prisma.club.findUnique({ where: { id }, select: clubSelect });
 };
