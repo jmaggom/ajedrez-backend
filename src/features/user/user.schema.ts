@@ -45,6 +45,7 @@ export const userTypeDefs = `
     fideId: String
     birthDate: String
     federation: String
+    clubId: ID
     elo: EloProfile
     eloHistory: [EloHistoryEntry!]!
   }

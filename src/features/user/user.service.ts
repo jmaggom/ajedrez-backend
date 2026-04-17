@@ -17,6 +17,7 @@ const toUserProfile = (user: UserWithPlayer): UserProfile => ({
             fideId: user.player.fideId ?? null,
             birthDate: user.player.birthDate,
             federation: user.player.federation ?? null,
+            clubId: user.player.clubId ?? null,
             elo: user.player.elo
                 ? {
                     fideClassical: user.player.elo.fideClassical,

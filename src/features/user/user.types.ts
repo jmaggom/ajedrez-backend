@@ -66,6 +66,7 @@ export type PlayerProfile = {
     fideId: string | null;
     birthDate: Date | null;
     federation: string | null;
+    clubId: number | null;
     elo: EloProfile | null;
     eloHistory: EloHistoryEntry[];
 };
