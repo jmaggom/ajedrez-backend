@@ -96,6 +96,7 @@ model User {
   fullName       String
   phone          String?
   pushToken      String?
+  avatarUrl      String?
   createdAt      DateTime       @default(now())
   clubId         Int?
 
