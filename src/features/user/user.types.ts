@@ -27,6 +27,11 @@ export type UpdateProfileInput = {
     birthDate?: string;
 };
 
+export type GetAvatarUploadUrlInput = {
+    fileName: string;
+    mimeType: string;
+};
+
 export type EloProfile = {
     fideClassical: number;
     fideRapid: number;
@@ -77,6 +82,7 @@ export type UserProfile = {
     role: UserRole;
     fullName: string;
     phone: string | null;
+    avatarUrl: string | null;
     player: PlayerProfile | null;
 };
 

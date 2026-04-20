@@ -10,6 +10,17 @@ export const findUserById = async (id: number): Promise<UserWithPlayer | null> =
     });
 };
 
+export const updateUserAvatarUrl = async (
+    userId: number,
+    avatarUrl: string,
+): Promise<UserWithPlayer> => {
+    return prisma.user.update({
+        where: { id: userId },
+        data: { avatarUrl },
+        include: { player: { select: playerSelect } },
+    });
+};
+
 export const updateUserProfile = async (
     userId: number,
     userData: Partial<{ fullName: string; phone: string }>,

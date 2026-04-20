@@ -1,9 +1,18 @@
 import { GraphQLError } from "graphql";
-import { UpdateProfileInput, UserProfile, toUserRole } from "./user.types";
+import { UpdateProfileInput, GetAvatarUploadUrlInput, UserProfile, toUserRole } from "./user.types";
 import { UserWithPlayer } from "./user.types";
 import * as userModel from "./user.model";
 import { fetchFidePlayerInfo } from "../../common/clients/chesstools.client";
 import { FideHistoryEntry } from "../../common/clients/chesstools.types";
+import {
+    buildAvatarPath,
+    getAvatarUploadUrl as storageGetAvatarUploadUrl,
+    getAvatarPublicUrl,
+    verifyFileExists,
+    deleteFile,
+} from "../../common/storage/storage.service";
+import { ALLOWED_AVATAR_TYPES } from "../../common/storage/storage.constant";
+import type { GetUploadUrlResult } from "../../common/storage/storage.types";
 
 const toUserProfile = (user: UserWithPlayer): UserProfile => ({
     id: user.id,
@@ -11,6 +20,7 @@ const toUserProfile = (user: UserWithPlayer): UserProfile => ({
     role: toUserRole(user.role),
     fullName: user.fullName,
     phone: user.phone ?? null,
+    avatarUrl: user.avatarUrl ?? null,
     player: user.player
         ? {
             id: user.player.id,
@@ -55,6 +65,54 @@ const toUserProfile = (user: UserWithPlayer): UserProfile => ({
         }
         : null,
 });
+
+export const getAvatarUploadUrl = async (
+    input: GetAvatarUploadUrlInput,
+    userId: number,
+): Promise<GetUploadUrlResult> => {
+    if (!ALLOWED_AVATAR_TYPES.includes(input.mimeType))
+        throw new GraphQLError('Tipo de archivo no permitido', {
+            extensions: { code: 'BAD_USER_INPUT' },
+        });
+
+    const path = buildAvatarPath({ userId, fileName: input.fileName });
+    const { uploadUrl, token } = await storageGetAvatarUploadUrl({ path });
+
+    return { uploadUrl, token, path };
+};
+
+export const confirmAvatarUpload = async (
+    path: string,
+    userId: number,
+): Promise<UserProfile> => {
+    const fileExists = await verifyFileExists({ bucket: 'avatar', path });
+    if (!fileExists)
+        throw new GraphQLError('El archivo no se ha subido correctamente', {
+            extensions: { code: 'BAD_USER_INPUT' },
+        });
+
+    const user = await userModel.findUserById(userId);
+    if (!user)
+        throw new GraphQLError('User not found', { extensions: { code: 'NOT_FOUND' } });
+
+    if (user.avatarUrl) {
+        const oldPath = user.avatarUrl.split('/storage/v1/object/public/avatar/')[1];
+        if (oldPath) {
+            await deleteFile({ bucket: 'avatar', path: oldPath }).catch(() => { });
+        }
+    }
+
+    const publicUrl = getAvatarPublicUrl(path);
+    await userModel.updateUserAvatarUrl(userId, publicUrl);
+
+    const updated = await userModel.findUserById(userId);
+    if (!updated)
+        throw new GraphQLError('User not found after avatar update', {
+            extensions: { code: 'INTERNAL_SERVER_ERROR' },
+        });
+
+    return toUserProfile(updated);
+};
 
 export const getMe = async (userId: number): Promise<UserProfile> => {
     const user = await userModel.findUserById(userId);

@@ -56,7 +56,19 @@ export const userTypeDefs = `
     role: UserRole!
     fullName: String!
     phone: String
+    avatarUrl: String
     player: PlayerProfile
+  }
+
+  type AvatarUploadUrl {
+    uploadUrl: String!
+    token: String!
+    path: String!
+  }
+
+  input GetAvatarUploadUrlInput {
+    fileName: String!
+    mimeType: String!
   }
 
   input UpdateProfileInput {
@@ -73,5 +85,7 @@ export const userTypeDefs = `
   extend type Mutation {
     updateProfile(input: UpdateProfileInput!): UserProfile!
     syncFideData: UserProfile!
+    getAvatarUploadUrl(input: GetAvatarUploadUrlInput!): AvatarUploadUrl!
+    confirmAvatarUpload(path: String!): UserProfile!
   }
 `;
