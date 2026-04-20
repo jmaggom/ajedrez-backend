@@ -47,8 +47,33 @@ export const paymentTypeDefs = `
     tournamentName: String
   }
 
+  type ReceiptUploadUrl {
+    uploadUrl: String!
+    token: String!
+    path: String!
+  }
+
+  input GetReceiptUploadUrlInput {
+    registrationId: ID!
+    fileName: String!
+    mimeType: String!
+    amount: Float!
+  }
+
+  input ConfirmReceiptUploadInput {
+    registrationId: ID!
+    path: String!
+    amount: Float!
+  }
+
   extend type Query {
     myPayments: [PaymentHistoryEntry!]!
     paymentReceipt(id: ID!): PaymentReceipt
+    receiptSignedUrl(paymentReceiptId: ID!): String!
+  }
+
+  extend type Mutation {
+    getReceiptUploadUrl(input: GetReceiptUploadUrlInput!): ReceiptUploadUrl!
+    confirmReceiptUpload(input: ConfirmReceiptUploadInput!): PaymentReceipt!
   }
 `;

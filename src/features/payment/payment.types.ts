@@ -1,5 +1,17 @@
 import type { Prisma } from '@prisma/client';
 
+export type GetReceiptUploadUrlInput = {
+  registrationId: string;
+  fileName: string;
+  mimeType: string;
+  amount: number;
+};
+
+export type ConfirmReceiptUploadInput = {
+  registrationId: string;
+  path: string;
+  amount: number;
+};
 
 export type PaymentHistoryEntry = {
   id: string;
@@ -41,3 +53,19 @@ export const paymentReceiptSelect = {
 export type PaymentReceiptWithRelations = Prisma.PaymentReceiptGetPayload<{
   select: typeof paymentReceiptSelect;
 }>;
+
+export const registrationWithOwnerSelect = {
+  id: true,
+  playerId: true,
+  tournamentId: true,
+  status: true,
+  paymentReceipt: true,
+  player: {
+    select: { userId: true },
+  },
+} satisfies Prisma.RegistrationSelect;
+
+export type RegistrationWithOwner = Prisma.RegistrationGetPayload<{
+  select: typeof registrationWithOwnerSelect;
+}>;
+
