@@ -2,7 +2,7 @@ import { GraphQLError } from 'graphql';
 import { NotificationType, PaymentStatus } from '@prisma/client';
 import * as clubModel from './club.model';
 import { sendPushNotification } from '../../common/notification/notification.service';
-import type { ClubWithRelations, PaymentReceiptWithRelations, UpdateClubInput } from './club.types';
+import type { ClubWithRelations, PaymentReceiptWithRelations, UpdateClubInput, ClubPlayerOutput } from './club.types';
 
 export const getAllClubs = async (): Promise<ClubWithRelations[]> => {
   return clubModel.findAllClubs();
@@ -197,6 +197,43 @@ export const getExpiringLicenses = async (userId: number, daysThreshold = 30) =>
     throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
 
   return clubModel.findExpiringLicenses(club.id, daysThreshold);
+};
+
+export const getClubPlayers = async (params: {
+  clubId: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{ nodes: ClubPlayerOutput[]; totalCount: number; hasNextPage: boolean }> => {
+  const page = params.page ?? 1;
+  const limit = params.limit ?? 10;
+
+  const { nodes, totalCount } = await clubModel.findClubPlayers({
+    clubId: Number(params.clubId),
+    search: params.search,
+    page,
+    limit,
+  });
+
+  return {
+    nodes: nodes.map((node) => ({
+      id: node.id.toString(),
+      fullName: node.user.fullName,
+      fideId: node.fideId ?? undefined,
+      elo: {
+        fideClassical: node.elo.fideClassical,
+        fadaClassical: node.elo.fadaClassical,
+      },
+      licenses: node.licenses.map((l) => ({
+        id: l.id.toString(),
+        type: l.type,
+        status: l.status,
+        expiresAt: l.expiresAt.toISOString(),
+      })),
+    })),
+    totalCount,
+    hasNextPage: totalCount > page * limit,
+  };
 };
 
 export const getDelegateDashboard = async (userId: number) => {

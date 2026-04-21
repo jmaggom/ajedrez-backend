@@ -55,6 +55,16 @@ export const clubResolvers = {
         throw new GraphQLError('Unauthenticated', { extensions: { code: 'UNAUTHENTICATED' } });
       return clubService.getExpiringLicenses(context.user.id, daysThreshold ?? 30);
     },
+
+    clubPlayers: (
+      _: unknown,
+      { clubId, search, page, limit }: { clubId: string; search?: string; page?: number; limit?: number },
+    ) => clubService.getClubPlayers({
+      clubId,
+      search: search ?? undefined,
+      page: page ?? 1,
+      limit: limit ?? 10,
+    }),
   },
 
   Mutation: {

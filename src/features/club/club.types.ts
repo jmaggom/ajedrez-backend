@@ -94,3 +94,19 @@ export type ExpiringLicenseResult = {
     phone: string | null;
   };
 };
+
+export type PlayerWithRelations = Prisma.PlayerGetPayload<{
+  include: {
+    user: { select: { id: true; fullName: true } };
+    elo: { select: { fideClassical: true; fadaClassical: true } };
+    licenses: { select: { id: true; type: true; status: true; expiresAt: true } };
+  };
+}>;
+
+export type ClubPlayerOutput = {
+  id: string;
+  fullName: string;
+  fideId?: string;
+  elo: { fideClassical: number; fadaClassical: number };
+  licenses: Array<{ id: string; type: string; status: string; expiresAt: string }>;
+};

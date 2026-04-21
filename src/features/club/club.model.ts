@@ -1,5 +1,5 @@
 import { prisma } from '../../config/database';
-import { LicenseStatus, PaymentStatus, Role } from '@prisma/client';
+import { LicenseStatus, PaymentStatus, Prisma, Role } from '@prisma/client';
 import {
   clubSelect,
   paymentReceiptSelect,
@@ -7,6 +7,7 @@ import {
   type PaymentReceiptWithRelations,
   type UpdateClubInput,
 } from './club.types';
+import type { PlayerWithRelations } from './club.types';
 
 export const findAllClubs = async (): Promise<ClubWithRelations[]> => {
   return prisma.club.findMany({ select: clubSelect, orderBy: { name: 'asc' } });
@@ -172,6 +173,46 @@ export const findRecentRegistrations = async (clubId: number, limit: number) => 
       tournament: true,
     },
   });
+};
+
+export const findClubPlayers = async (params: {
+  clubId: number;
+  search?: string;
+  page?: number;
+  limit?: number;
+}): Promise<{ nodes: PlayerWithRelations[]; totalCount: number }> => {
+  const page = params.page ?? 1;
+  const limit = params.limit ?? 10;
+
+  const where: Prisma.PlayerWhereInput = {
+    clubId: params.clubId,
+    ...(params.search && {
+      user: {
+        fullName: { contains: params.search, mode: 'insensitive' },
+      },
+    }),
+  };
+
+  const [nodes, totalCount] = await Promise.all([
+    prisma.player.findMany({
+      where,
+      include: {
+        user: { select: { id: true, fullName: true } },
+        elo: { select: { fideClassical: true, fadaClassical: true } },
+        licenses: {
+          select: { id: true, type: true, status: true, expiresAt: true },
+          orderBy: { expiresAt: 'desc' },
+          take: 1,
+        },
+      },
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { user: { fullName: 'asc' } },
+    }),
+    prisma.player.count({ where }),
+  ]);
+
+  return { nodes, totalCount };
 };
 
 export const countPendingPayments = async (clubId: number): Promise<number> => {

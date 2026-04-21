@@ -112,6 +112,12 @@ export const clubTypeDefs = `
     logoUrl: String
   }
 
+  type ClubPlayersConnection {
+    nodes: [ClubPlayer!]!
+    totalCount: Int!
+    hasNextPage: Boolean!
+  }
+
   extend type Query {
     clubs(filters: ClubFiltersInput): [Club!]!
     club(id: ID!): Club
@@ -119,6 +125,12 @@ export const clubTypeDefs = `
     delegateDashboard: DelegateDashboard!
     pendingPayments(tournamentId: ID): [PendingPayment!]!
     expiringLicenses(daysThreshold: Int): [ExpiringLicense!]!
+    clubPlayers(
+      clubId: ID!
+      search: String
+      page: Int
+      limit: Int
+    ): ClubPlayersConnection!
   }
 
   extend type Mutation {
