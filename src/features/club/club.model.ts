@@ -13,22 +13,35 @@ export const findAllClubs = async (): Promise<ClubWithRelations[]> => {
   return prisma.club.findMany({ select: clubSelect, orderBy: { name: 'asc' } });
 };
 
-export const findClubs = async (filters?: {
-  name?: string;
-  community?: string;
-}): Promise<ClubWithRelations[]> => {
-  return prisma.club.findMany({
-    where: {
-      ...(filters?.name && {
-        name: { contains: filters.name, mode: 'insensitive' },
-      }),
-      ...(filters?.community && {
-        address: { contains: filters.community, mode: 'insensitive' },
-      }),
-    },
-    select: clubSelect,
-    orderBy: { name: 'asc' },
-  });
+export const findClubs = async (params: {
+  filters?: { name?: string; community?: string };
+  page?: number;
+  limit?: number;
+}): Promise<{ nodes: ClubWithRelations[]; totalCount: number }> => {
+  const page = params.page ?? 1;
+  const limit = params.limit ?? 20;
+
+  const where: Prisma.ClubWhereInput = {
+    ...(params.filters?.name && {
+      name: { contains: params.filters.name, mode: 'insensitive' },
+    }),
+    ...(params.filters?.community && {
+      address: { contains: params.filters.community, mode: 'insensitive' },
+    }),
+  };
+
+  const [nodes, totalCount] = await Promise.all([
+    prisma.club.findMany({
+      where,
+      select: clubSelect,
+      orderBy: { name: 'asc' },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    prisma.club.count({ where }),
+  ]);
+
+  return { nodes, totalCount };
 };
 
 export const findClubById = async (id: number): Promise<ClubWithRelations | null> => {
@@ -197,7 +210,7 @@ export const findClubPlayers = async (params: {
     prisma.player.findMany({
       where,
       include: {
-        user: { select: { id: true, fullName: true } },
+        user: { select: { id: true, fullName: true, avatarUrl: true } },
         elo: { select: { fideClassical: true, fadaClassical: true } },
         licenses: {
           select: { id: true, type: true, status: true, expiresAt: true },

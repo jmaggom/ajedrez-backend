@@ -8,11 +8,15 @@ export const getAllClubs = async (): Promise<ClubWithRelations[]> => {
   return clubModel.findAllClubs();
 };
 
-export const getClubs = async (filters?: {
-  name?: string;
-  community?: string;
-}): Promise<ClubWithRelations[]> => {
-  return clubModel.findClubs(filters);
+export const getClubs = async (params: {
+  filters?: { name?: string; community?: string };
+  page?: number;
+  limit?: number;
+}): Promise<{ nodes: ClubWithRelations[]; totalCount: number; hasNextPage: boolean }> => {
+  const page = params.page ?? 1;
+  const limit = params.limit ?? 20;
+  const { nodes, totalCount } = await clubModel.findClubs({ filters: params.filters, page, limit });
+  return { nodes, totalCount, hasNextPage: totalCount > page * limit };
 };
 
 export const getClub = async (id: number): Promise<ClubWithRelations> => {
@@ -219,6 +223,7 @@ export const getClubPlayers = async (params: {
     nodes: nodes.map((node) => ({
       id: node.id.toString(),
       fullName: node.user.fullName,
+      avatarUrl: node.user.avatarUrl ?? undefined,
       fideId: node.fideId ?? undefined,
       elo: {
         fideClassical: node.elo.fideClassical,

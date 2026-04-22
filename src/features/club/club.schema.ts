@@ -21,6 +21,7 @@ export const clubTypeDefs = `
   type ClubPlayer {
     id: ID!
     fullName: String!
+    avatarUrl: String
     fideId: String
     clubId: ID
     elo: ClubPlayerElo
@@ -118,8 +119,14 @@ export const clubTypeDefs = `
     hasNextPage: Boolean!
   }
 
+  type ClubsConnection {
+    nodes: [Club!]!
+    totalCount: Int!
+    hasNextPage: Boolean!
+  }
+
   extend type Query {
-    clubs(filters: ClubFiltersInput): [Club!]!
+    clubs(filters: ClubFiltersInput, page: Int, limit: Int): ClubsConnection!
     club(id: ID!): Club
     myClub: Club
     delegateDashboard: DelegateDashboard!

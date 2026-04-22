@@ -7,8 +7,8 @@ export const clubResolvers = {
   Query: {
     clubs: (
       _: unknown,
-      { filters }: { filters?: { name?: string; community?: string } },
-    ) => clubService.getClubs(filters),
+      { filters, page, limit }: { filters?: { name?: string; community?: string }; page?: number; limit?: number },
+    ) => clubService.getClubs({ filters, page, limit }),
 
     club: (
       _: unknown,
