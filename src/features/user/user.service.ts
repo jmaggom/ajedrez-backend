@@ -117,7 +117,7 @@ export const confirmAvatarUpload = async (
 export const getMe = async (userId: number): Promise<UserProfile> => {
     const user = await userModel.findUserById(userId);
     if (!user) {
-        throw new GraphQLError("User not found", { extensions: { code: "NOT_FOUND" } });
+        throw new GraphQLError("User not found", { extensions: { code: "UNAUTHENTICATED" } });
     }
     return toUserProfile(user);
 };
