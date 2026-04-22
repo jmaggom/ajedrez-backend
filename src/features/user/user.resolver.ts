@@ -1,6 +1,6 @@
 import { GraphQLError } from "graphql";
 import { Context } from "../../common/context.types";
-import { UpdateProfileInput } from "./user.types";
+import { UpdateProfileInput, GetAvatarUploadUrlInput } from "./user.types";
 import * as userService from "./user.service";
 
 export const userResolvers = {
@@ -24,6 +24,16 @@ export const userResolvers = {
                 throw new GraphQLError("Unauthorized", { extensions: { code: "UNAUTHENTICATED" } });
             }
             return userService.syncFideData(ctx.user.id);
+        },
+        getAvatarUploadUrl: (_: unknown, { input }: { input: GetAvatarUploadUrlInput }, ctx: Context) => {
+            if (!ctx.user)
+                throw new GraphQLError('Unauthorized', { extensions: { code: 'UNAUTHENTICATED' } });
+            return userService.getAvatarUploadUrl(input, ctx.user.id);
+        },
+        confirmAvatarUpload: (_: unknown, { path }: { path: string }, ctx: Context) => {
+            if (!ctx.user)
+                throw new GraphQLError('Unauthorized', { extensions: { code: 'UNAUTHENTICATED' } });
+            return userService.confirmAvatarUpload(path, ctx.user.id);
         },
     },
 };

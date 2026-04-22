@@ -50,6 +50,7 @@ export type TournamentFiltersInput = {
   dateTo?: string;
   page?: number;
   limit?: number;
+  clubId?: number;
 };
 
 export type RegistrationResult = {

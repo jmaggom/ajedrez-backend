@@ -7,6 +7,7 @@ import { resolvers } from "./graphql/resolvers/index";
 import { expressMiddleware } from "@apollo/server/express4";
 import authMiddleware from "./common/middlewares/auth.middleware";
 import { Context } from "./common/context.types";
+import { verifySupabaseConnection } from "./config/supabase";
 
 dotenv.config();
 
@@ -20,6 +21,8 @@ const startServer = async () => {
   app.get("/health", (req, res) => {
     res.json({ status: "servidor funcionando" });
   });
+
+  await verifySupabaseConnection();
 
   const server = new ApolloServer<Context>({ typeDefs, resolvers });
   await server.start();
