@@ -169,6 +169,7 @@ export const tournamentTypeDefs = `
     name: String
     dateFrom: String
     dateTo: String
+    clubId: ID
   }
 
   extend type Query {

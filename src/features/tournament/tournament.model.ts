@@ -38,6 +38,8 @@ export const findTournaments = async (
   };
   if (filters.mode && modeMap[filters.mode]) where.mode = modeMap[filters.mode];
 
+  if (filters.clubId) where.organizerId = filters.clubId;
+
   if (filters.name) where.name = { contains: filters.name, mode: 'insensitive' };
   if (filters.dateFrom || filters.dateTo) {
     where.startDate = {};
