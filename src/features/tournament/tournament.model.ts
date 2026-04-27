@@ -64,10 +64,16 @@ export const findTournamentById = async (
 export const findUserWithRole = async (
   userId: number,
 ): Promise<{ id: number; role: string; clubId: number | null } | null> => {
-  return prisma.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, role: true, clubId: true },
+    select: { id: true, role: true, delegate: { select: { clubId: true } } },
   });
+  if (!user) return null;
+  return {
+    id: user.id,
+    role: user.role,
+    clubId: user.delegate?.clubId ?? null,
+  };
 };
 
 export const countActiveTournamentsByOrganizer = async (
