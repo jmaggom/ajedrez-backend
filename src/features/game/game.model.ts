@@ -37,10 +37,21 @@ export const findTournamentById = async (
 export const findUserById = async (
   id: number,
 ): Promise<{ id: number; role: string; clubId: number | null } | null> => {
-  return prisma.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, role: true, clubId: true },
+    select: {
+      id: true,
+      role: true,
+      delegate: { select: { clubId: true } },
+      player: { select: { clubId: true } },
+    },
   });
+  if (!user) return null;
+  return {
+    id: user.id,
+    role: user.role,
+    clubId: user.delegate?.clubId ?? user.player?.clubId ?? null,
+  };
 };
 
 export const createGame = async (data: {
