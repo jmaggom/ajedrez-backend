@@ -98,10 +98,9 @@ model User {
   pushToken      String?
   avatarUrl      String?
   createdAt      DateTime       @default(now())
-  clubId         Int?
 
-  club                 Club?            @relation("DelegadosClub", fields: [clubId], references: [id])
   player               Player?
+  delegate             Delegate?
   sessions             MobileSession[]
   notifications        Notification[]
   gamesRegistered      Game[]           @relation("GameRegisteredBy")
@@ -135,6 +134,15 @@ model Player {
   tournamentResults TournamentResult[]
 }
 
+model Delegate {
+  id      Int   @id @default(autoincrement())
+  userId  Int   @unique
+  clubId  Int
+
+  user    User  @relation(fields: [userId], references: [id])
+  club    Club  @relation("DelegadosClub", fields: [clubId], references: [id])
+}
+
 model Club {
   id             Int            @id @default(autoincrement())
   name           String
@@ -149,7 +157,7 @@ model Club {
   website        String?
   description    String?
 
-  delegates      User[]         @relation("DelegadosClub")
+  delegates      Delegate[]     @relation("DelegadosClub")
   players        Player[]       @relation("JugadoresClub")
   tournaments    Tournament[]
 }
