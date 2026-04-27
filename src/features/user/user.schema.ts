@@ -50,6 +50,11 @@ export const userTypeDefs = `
     eloHistory: [EloHistoryEntry!]!
   }
 
+  type DelegateProfile {
+    id: Int!
+    clubId: ID!
+  }
+
   type UserProfile {
     id: Int!
     email: String!
@@ -58,6 +63,7 @@ export const userTypeDefs = `
     phone: String
     avatarUrl: String
     player: PlayerProfile
+    delegate: DelegateProfile
   }
 
   type AvatarUploadUrl {

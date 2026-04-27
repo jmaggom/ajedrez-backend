@@ -76,6 +76,11 @@ export type PlayerProfile = {
     eloHistory: EloHistoryEntry[];
 };
 
+export type DelegateProfile = {
+    id: number;
+    clubId: number;
+};
+
 export type UserProfile = {
     id: number;
     email: string;
@@ -84,6 +89,7 @@ export type UserProfile = {
     phone: string | null;
     avatarUrl: string | null;
     player: PlayerProfile | null;
+    delegate: DelegateProfile | null;
 };
 
 export const playerSelect = {
@@ -103,8 +109,16 @@ export const playerSelect = {
     },
 };
 
+export const delegateSelect = {
+    id: true,
+    clubId: true,
+};
+
 export type UserWithPlayer = Prisma.UserGetPayload<{
-    include: { player: { select: typeof playerSelect } };
+    include: {
+        player: { select: typeof playerSelect };
+        delegate: { select: typeof delegateSelect };
+    };
 }>;
 
 export type SyncPlayerFideDataInput = {

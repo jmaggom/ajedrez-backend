@@ -64,6 +64,12 @@ const toUserProfile = (user: UserWithPlayer): UserProfile => ({
             })),
         }
         : null,
+    delegate: user.delegate
+        ? {
+            id: user.delegate.id,
+            clubId: user.delegate.clubId,
+        }
+        : null,
 });
 
 export const getAvatarUploadUrl = async (

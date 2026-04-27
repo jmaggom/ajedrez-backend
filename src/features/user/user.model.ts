@@ -1,12 +1,15 @@
 import { EloSource } from "@prisma/client";
 import { prisma } from "../../config/database";
-import { playerSelect, SyncPlayerFideDataInput, UserWithPlayer } from "./user.types";
+import { playerSelect, delegateSelect, SyncPlayerFideDataInput, UserWithPlayer } from "./user.types";
 
 
 export const findUserById = async (id: number): Promise<UserWithPlayer | null> => {
     return prisma.user.findUnique({
         where: { id },
-        include: { player: { select: playerSelect } },
+        include: {
+            player: { select: playerSelect },
+            delegate: { select: delegateSelect },
+        },
     });
 };
 
@@ -17,7 +20,10 @@ export const updateUserAvatarUrl = async (
     return prisma.user.update({
         where: { id: userId },
         data: { avatarUrl },
-        include: { player: { select: playerSelect } },
+        include: {
+            player: { select: playerSelect },
+            delegate: { select: delegateSelect },
+        },
     });
 };
 
@@ -32,7 +38,10 @@ export const updateUserProfile = async (
         return prisma.user.update({
             where: { id: userId },
             data: userData,
-            include: { player: { select: playerSelect } },
+            include: {
+                player: { select: playerSelect },
+                delegate: { select: delegateSelect },
+            },
         });
     }
 
@@ -41,7 +50,10 @@ export const updateUserProfile = async (
         await tx.player.update({ where: { userId }, data: playerData });
         return tx.user.findUniqueOrThrow({
             where: { id: userId },
-            include: { player: { select: playerSelect } },
+            include: {
+                player: { select: playerSelect },
+                delegate: { select: delegateSelect },
+            },
         });
     });
 };
@@ -100,7 +112,10 @@ export const syncPlayerFideData = async (
 
         return tx.user.findUniqueOrThrow({
             where: { id: userId },
-            include: { player: { select: playerSelect } },
+            include: {
+                player: { select: playerSelect },
+                delegate: { select: delegateSelect },
+            },
         });
     });
 };
