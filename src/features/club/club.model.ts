@@ -1,5 +1,5 @@
 import { prisma } from '../../config/database';
-import { LicenseStatus, PaymentStatus, Prisma, Role } from '@prisma/client';
+import { LicenseStatus, PaymentStatus, Prisma } from '@prisma/client';
 import {
   clubSelect,
   paymentReceiptSelect,
@@ -8,6 +8,31 @@ import {
   type UpdateClubInput,
 } from './club.types';
 import type { PlayerWithRelations } from './club.types';
+
+export const findUserByEmail = async (email: string): Promise<{ id: number; email: string; fullName: string; role: string } | null> => {
+  return prisma.user.findFirst({
+    where: { email: { equals: email, mode: 'insensitive' } },
+    select: { id: true, email: true, fullName: true, role: true },
+  });
+};
+
+export const addDelegateToClub = async (clubId: number, userId: number): Promise<ClubWithRelations> => {
+  await prisma.delegate.create({ data: { userId, clubId } });
+  return prisma.club.findUniqueOrThrow({ where: { id: clubId }, select: clubSelect });
+};
+
+export const removeDelegateFromClub = async (clubId: number, delegateUserId: number): Promise<ClubWithRelations> => {
+  await prisma.delegate.delete({ where: { userId: delegateUserId } });
+  return prisma.club.findUniqueOrThrow({ where: { id: clubId }, select: clubSelect });
+};
+
+export const updateClubLogoUrl = async (clubId: number, logoUrl: string): Promise<ClubWithRelations> => {
+  return prisma.club.update({
+    where: { id: clubId },
+    data: { logoUrl },
+    select: clubSelect,
+  });
+};
 
 export const findAllClubs = async (): Promise<ClubWithRelations[]> => {
   return prisma.club.findMany({ select: clubSelect, orderBy: { name: 'asc' } });
@@ -52,7 +77,7 @@ export const findClubByDelegateUserId = async (userId: number): Promise<ClubWith
   return prisma.club.findFirst({
     where: {
       delegates: {
-        some: { id: userId, role: Role.delegate },
+        some: { userId },
       },
     },
     select: clubSelect,
@@ -174,18 +199,41 @@ export const findExpiringLicenses = async (clubId: number, daysThreshold: number
   });
 };
 
-export const findRecentRegistrations = async (clubId: number, limit: number) => {
-  return prisma.registration.findMany({
-    where: {
-      tournament: { organizerId: clubId },
-    },
-    orderBy: { registeredAt: 'desc' },
-    take: limit,
-    include: {
-      player: { include: { user: true } },
-      tournament: true,
-    },
-  });
+export const findRecentRegistrations = async (params: {
+  clubId: number;
+  page?: number;
+  limit?: number;
+}) => {
+  const { clubId, page = 1, limit = 10 } = params;
+  const skip = (page - 1) * limit;
+
+  const [nodes, totalCount] = await Promise.all([
+    prisma.registration.findMany({
+      where: {
+        tournament: {
+          organizerId: clubId,
+          status: { in: ['open', 'in_progress'] },
+        },
+      },
+      orderBy: { registeredAt: 'desc' },
+      skip,
+      take: limit,
+      include: {
+        player: { include: { user: true } },
+        tournament: true,
+      },
+    }),
+    prisma.registration.count({
+      where: {
+        tournament: {
+          organizerId: clubId,
+          status: { in: ['open', 'in_progress'] },
+        },
+      },
+    }),
+  ]);
+
+  return { nodes, totalCount };
 };
 
 export const findClubPlayers = async (params: {

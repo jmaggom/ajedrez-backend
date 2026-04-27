@@ -4,6 +4,16 @@ import * as clubService from './club.service';
 import type { UpdateClubInput } from './club.types';
 
 export const clubResolvers = {
+  Club: {
+    delegates: (parent: { delegates: Array<{ id: number; userId: number; user: { email: string; fullName: string; phone: string | null } }> }) =>
+      parent.delegates.map((d) => ({
+        id: d.userId,
+        fullName: d.user.fullName,
+        email: d.user.email,
+        phone: d.user.phone ?? null,
+      })),
+  },
+
   Query: {
     clubs: (
       _: unknown,
@@ -65,6 +75,33 @@ export const clubResolvers = {
       page: page ?? 1,
       limit: limit ?? 10,
     }),
+
+    searchUserByEmail: (
+      _: unknown,
+      { email }: { email: string },
+      context: Context,
+    ) => {
+      if (!context.user)
+        throw new GraphQLError('Unauthenticated', { extensions: { code: 'UNAUTHENTICATED' } });
+      return clubService.searchUserByEmail(email, context.user.id);
+    },
+
+    recentRegistrations: async (
+      _: unknown,
+      { page, limit }: { page?: number; limit?: number },
+      context: Context,
+    ) => {
+      if (!context.user) {
+        throw new GraphQLError('Unauthorized', {
+          extensions: { code: 'UNAUTHORIZED' },
+        });
+      }
+      return clubService.getRecentRegistrations(
+        context.user.id,
+        page ?? 1,
+        limit ?? 10,
+      );
+    },
   },
 
   Mutation: {
@@ -117,6 +154,46 @@ export const clubResolvers = {
       if (!context.user)
         throw new GraphQLError('Unauthenticated', { extensions: { code: 'UNAUTHENTICATED' } });
       return clubService.rejectPayment(Number(paymentReceiptId), context.user.id, reason);
+    },
+
+    addDelegate: (
+      _: unknown,
+      { clubId, userEmail }: { clubId: string; userEmail: string },
+      context: Context,
+    ) => {
+      if (!context.user)
+        throw new GraphQLError('Unauthenticated', { extensions: { code: 'UNAUTHENTICATED' } });
+      return clubService.addDelegate(Number(clubId), userEmail, context.user.id);
+    },
+
+    removeDelegate: (
+      _: unknown,
+      { clubId, delegateId }: { clubId: string; delegateId: string },
+      context: Context,
+    ) => {
+      if (!context.user)
+        throw new GraphQLError('Unauthenticated', { extensions: { code: 'UNAUTHENTICATED' } });
+      return clubService.removeDelegate(Number(clubId), Number(delegateId), context.user.id);
+    },
+
+    getClubLogoUploadUrl: (
+      _: unknown,
+      { clubId, fileName, mimeType }: { clubId: string; fileName: string; mimeType: string },
+      context: Context,
+    ) => {
+      if (!context.user)
+        throw new GraphQLError('Unauthenticated', { extensions: { code: 'UNAUTHENTICATED' } });
+      return clubService.getClubLogoUploadUrl(Number(clubId), fileName, mimeType, context.user.id);
+    },
+
+    confirmClubLogoUpload: (
+      _: unknown,
+      { clubId, path }: { clubId: string; path: string },
+      context: Context,
+    ) => {
+      if (!context.user)
+        throw new GraphQLError('Unauthenticated', { extensions: { code: 'UNAUTHENTICATED' } });
+      return clubService.confirmClubLogoUpload(Number(clubId), path, context.user.id);
     },
   },
 };

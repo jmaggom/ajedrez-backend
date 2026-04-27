@@ -68,7 +68,7 @@ export const clubTypeDefs = `
 
   type ExpiringLicense {
     id: ID!
-    player: ClubDelegate!
+    player: DashboardPlayer!
     type: String!
     expiresAt: String!
   }
@@ -94,7 +94,7 @@ export const clubTypeDefs = `
 
   type DelegateDashboard {
     pendingPaymentsCount: Int!
-    recentRegistrations: [RecentRegistration!]!
+    expiringLicensesCount: Int!
     expiringLicenses: [ExpiringLicense!]!
   }
 
@@ -125,6 +125,18 @@ export const clubTypeDefs = `
     hasNextPage: Boolean!
   }
 
+  type ClubLogoUploadUrl {
+    uploadUrl: String!
+    token: String!
+    path: String!
+  }
+
+  type RecentRegistrationsConnection {
+    nodes: [RecentRegistration!]!
+    totalCount: Int!
+    hasNextPage: Boolean!
+  }
+
   extend type Query {
     clubs(filters: ClubFiltersInput, page: Int, limit: Int): ClubsConnection!
     club(id: ID!): Club
@@ -138,6 +150,8 @@ export const clubTypeDefs = `
       page: Int
       limit: Int
     ): ClubPlayersConnection!
+    searchUserByEmail(email: String!): ClubDelegate
+    recentRegistrations(page: Int, limit: Int): RecentRegistrationsConnection!
   }
 
   extend type Mutation {
@@ -146,5 +160,9 @@ export const clubTypeDefs = `
     removePlayerFromClub(playerId: ID!): Club!
     validatePayment(paymentReceiptId: ID!): PendingPayment!
     rejectPayment(paymentReceiptId: ID!, reason: String!): PendingPayment!
+    addDelegate(clubId: ID!, userEmail: String!): Club!
+    removeDelegate(clubId: ID!, delegateId: ID!): Club!
+    getClubLogoUploadUrl(clubId: ID!, fileName: String!, mimeType: String!): ClubLogoUploadUrl!
+    confirmClubLogoUpload(clubId: ID!, path: String!): Club!
   }
 `;

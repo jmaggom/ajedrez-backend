@@ -31,9 +31,14 @@ export const clubSelect = {
   delegates: {
     select: {
       id: true,
-      email: true,
-      fullName: true,
-      phone: true,
+      userId: true,
+      user: {
+        select: {
+          email: true,
+          fullName: true,
+          phone: true,
+        },
+      },
     },
   },
   players: {

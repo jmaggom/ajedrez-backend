@@ -2,7 +2,14 @@ import { GraphQLError } from 'graphql';
 import { NotificationType, PaymentStatus } from '@prisma/client';
 import * as clubModel from './club.model';
 import { sendPushNotification } from '../../common/notification/notification.service';
+import {
+  getAvatarUploadUrl,
+  getAvatarPublicUrl,
+  deleteFile,
+} from '../../common/storage/storage.service';
 import type { ClubWithRelations, PaymentReceiptWithRelations, UpdateClubInput, ClubPlayerOutput } from './club.types';
+
+const ALLOWED_LOGO_TYPES = ['image/jpeg', 'image/jpg', 'image/png'];
 
 export const getAllClubs = async (): Promise<ClubWithRelations[]> => {
   return clubModel.findAllClubs();
@@ -44,7 +51,7 @@ export const updateClub = async (
   if (!club)
     throw new GraphQLError('Club not found', { extensions: { code: 'NOT_FOUND' } });
 
-  const isDelegateOfClub = club.delegates.some((d) => d.id === userId);
+  const isDelegateOfClub = club.delegates.some((d) => d.userId === userId);
   if (!isDelegateOfClub)
     // TODO: migrar a union type UnauthorizedError
     throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
@@ -241,16 +248,163 @@ export const getClubPlayers = async (params: {
   };
 };
 
+export const searchUserByEmail = async (
+  email: string,
+  _requestingUserId: number,
+): Promise<{ id: number; email: string; fullName: string; role: string } | null> => {
+  return clubModel.findUserByEmail(email);
+};
+
+export const addDelegate = async (
+  clubId: number,
+  userEmail: string,
+  requestingUserId: number,
+): Promise<ClubWithRelations> => {
+  const club = await clubModel.findClubById(clubId);
+  if (!club)
+    throw new GraphQLError('Club not found', { extensions: { code: 'NOT_FOUND' } });
+
+  const isDelegate = club.delegates.some((d) => d.userId === requestingUserId);
+  if (!isDelegate)
+    throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
+
+  const user = await clubModel.findUserByEmail(userEmail);
+  if (!user)
+    throw new GraphQLError('No user found with that email', { extensions: { code: 'NOT_FOUND' } });
+
+  const alreadyDelegate = club.delegates.some((d) => d.userId === user.id);
+  if (alreadyDelegate)
+    throw new GraphQLError('This user is already a delegate of the club', { extensions: { code: 'CONFLICT' } });
+
+  return clubModel.addDelegateToClub(clubId, user.id);
+};
+
+export const removeDelegate = async (
+  clubId: number,
+  delegateId: number,
+  requestingUserId: number,
+): Promise<ClubWithRelations> => {
+  const club = await clubModel.findClubById(clubId);
+  if (!club)
+    throw new GraphQLError('Club not found', { extensions: { code: 'NOT_FOUND' } });
+
+  const isDelegate = club.delegates.some((d) => d.userId === requestingUserId);
+  if (!isDelegate)
+    throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
+
+  if (delegateId === requestingUserId)
+    throw new GraphQLError('You cannot remove yourself as a delegate', { extensions: { code: 'BAD_USER_INPUT' } });
+
+  const targetIsDelegate = club.delegates.some((d) => d.userId === delegateId);
+  if (!targetIsDelegate)
+    throw new GraphQLError('This user is not a delegate of the club', { extensions: { code: 'NOT_FOUND' } });
+
+  return clubModel.removeDelegateFromClub(clubId, delegateId);
+};
+
+export const getClubLogoUploadUrl = async (
+  clubId: number,
+  fileName: string,
+  mimeType: string,
+  userId: number,
+): Promise<{ uploadUrl: string; token: string; path: string }> => {
+  const club = await clubModel.findClubById(clubId);
+  if (!club)
+    throw new GraphQLError('Club not found', { extensions: { code: 'NOT_FOUND' } });
+
+  const isDelegate = club.delegates.some((d) => d.id === userId);
+  if (!isDelegate)
+    throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
+
+  if (!ALLOWED_LOGO_TYPES.includes(mimeType))
+    throw new GraphQLError('File type not allowed', { extensions: { code: 'BAD_USER_INPUT' } });
+
+  const path = `${clubId}/${Date.now()}-${fileName}`;
+  const { uploadUrl, token } = await getAvatarUploadUrl({ path });
+  return { uploadUrl, token, path };
+};
+
+export const confirmClubLogoUpload = async (
+  clubId: number,
+  path: string,
+  userId: number,
+): Promise<ClubWithRelations> => {
+  const club = await clubModel.findClubById(clubId);
+  if (!club)
+    throw new GraphQLError('Club not found', { extensions: { code: 'NOT_FOUND' } });
+
+  const isDelegate = club.delegates.some((d) => d.id === userId);
+  if (!isDelegate)
+    throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
+
+  const publicUrl = getAvatarPublicUrl(path);
+
+  if (club.logoUrl) {
+    const oldPath = club.logoUrl.split('/storage/v1/object/public/avatar/')[1];
+    if (oldPath) deleteFile({ bucket: 'avatar', path: oldPath }).catch(() => { });
+  }
+
+  return clubModel.updateClubLogoUrl(clubId, publicUrl);
+};
+
 export const getDelegateDashboard = async (userId: number) => {
   const club = await clubModel.findClubByDelegateUserId(userId);
   if (!club)
     throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
 
-  const [pendingPaymentsCount, recentRegistrations, expiringLicenses] = await Promise.all([
+  const [pendingPaymentsCount, expiringLicenses] = await Promise.all([
     clubModel.countPendingPayments(club.id),
-    clubModel.findRecentRegistrations(club.id, 10),
     clubModel.findExpiringLicenses(club.id, 30),
   ]);
 
-  return { pendingPaymentsCount, recentRegistrations, expiringLicenses };
+  return {
+    pendingPaymentsCount,
+    expiringLicensesCount: expiringLicenses.length,
+    expiringLicenses: expiringLicenses.map((license) => ({
+      id: license.id.toString(),
+      type: license.type,
+      expiresAt: license.expiresAt.toISOString(),
+      player: {
+        id: license.player.id.toString(),
+        fullName: license.player.user.fullName,
+      },
+    })),
+  };
+};
+
+export const getRecentRegistrations = async (
+  userId: number,
+  page: number,
+  limit: number,
+) => {
+  const club = await clubModel.findClubByDelegateUserId(userId);
+  if (!club)
+    throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
+
+  const { nodes, totalCount } = await clubModel.findRecentRegistrations({
+    clubId: club.id,
+    page,
+    limit,
+  });
+
+  const hasNextPage = totalCount > page * limit;
+
+  return {
+    totalCount,
+    hasNextPage,
+    nodes: nodes.map((reg) => ({
+      id: reg.id.toString(),
+      status: reg.status,
+      registeredAt: reg.registeredAt.toISOString(),
+      player: {
+        id: reg.player.id.toString(),
+        fullName: reg.player.user.fullName,
+      },
+      tournament: {
+        id: reg.tournament.id.toString(),
+        name: reg.tournament.name,
+        startDate: reg.tournament.startDate.toISOString(),
+      },
+    })),
+  };
 };
