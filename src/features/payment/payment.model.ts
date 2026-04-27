@@ -55,7 +55,7 @@ export const findClubDelegate = async (
     where: {
       id: clubId,
       delegates: {
-        some: { id: userId, role: Role.delegate },
+        some: { userId },
       },
     },
   });
