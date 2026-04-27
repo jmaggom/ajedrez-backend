@@ -1,5 +1,4 @@
 import { prisma } from '../../config/database';
-import { Role } from '@prisma/client';
 import type { PaymentReceipt } from '@prisma/client';
 import { paymentReceiptSelect, type PaymentReceiptWithRelations, registrationWithOwnerSelect, type RegistrationWithOwner } from './payment.types';
 
