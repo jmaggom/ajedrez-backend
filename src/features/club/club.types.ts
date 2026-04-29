@@ -37,6 +37,11 @@ export const clubSelect = {
           email: true,
           fullName: true,
           phone: true,
+          player: {
+            select: {
+              id: true,
+            },
+          },
         },
       },
     },
@@ -65,10 +70,17 @@ export const paymentReceiptSelect = {
   validatedById: true,
   validatedAt: true,
   registration: {
-    include: {
+    select: {
+      id: true,
       player: {
-        include: {
-          user: true,
+        select: {
+          id: true,
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+            },
+          },
         },
       },
       tournament: {
