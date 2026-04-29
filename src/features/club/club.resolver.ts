@@ -5,13 +5,21 @@ import type { UpdateClubInput } from './club.types';
 
 export const clubResolvers = {
   Club: {
-    delegates: (parent: { delegates: Array<{ id: number; userId: number; user: { email: string; fullName: string; phone: string | null } }> }) =>
+    delegates: (parent: { delegates: Array<{ id: number; userId: number; user: { email: string; fullName: string; phone: string | null; player: { id: number } | null } }> }) =>
       parent.delegates.map((d) => ({
         id: d.userId,
         fullName: d.user.fullName,
         email: d.user.email,
         phone: d.user.phone ?? null,
+        playerId: d.user.player?.id ?? null,
       })),
+  },
+
+  PendingPaymentRegistration: {
+    player: (parent: { player: { id: number; user: { fullName: string } } }) => ({
+      id: String(parent.player.id),
+      fullName: parent.player.user.fullName,
+    }),
   },
 
   Query: {
@@ -48,12 +56,12 @@ export const clubResolvers = {
 
     pendingPayments: (
       _: unknown,
-      { tournamentId }: { tournamentId?: string },
+      { tournamentId, page, limit }: { tournamentId?: string; page?: number; limit?: number },
       context: Context,
     ) => {
       if (!context.user)
         throw new GraphQLError('Unauthenticated', { extensions: { code: 'UNAUTHENTICATED' } });
-      return clubService.getPendingPayments(context.user.id, tournamentId ?? undefined);
+      return clubService.getPendingPayments(context.user.id, tournamentId, page ?? 1, limit ?? 10);
     },
 
     expiringLicenses: (
