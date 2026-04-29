@@ -9,10 +9,16 @@ import {
 } from './club.types';
 import type { PlayerWithRelations } from './club.types';
 
-export const findUserByEmail = async (email: string): Promise<{ id: number; email: string; fullName: string; role: string } | null> => {
+export const findUserByEmail = async (email: string): Promise<{ id: number; email: string; fullName: string; role: string; player: { id: number } | null } | null> => {
   return prisma.user.findFirst({
     where: { email: { equals: email, mode: 'insensitive' } },
-    select: { id: true, email: true, fullName: true, role: true },
+    select: {
+      id: true,
+      email: true,
+      fullName: true,
+      role: true,
+      player: { select: { id: true } },
+    },
   });
 };
 
@@ -139,19 +145,31 @@ export const removePlayerFromClub = async (playerId: number): Promise<ClubWithRe
 export const findPendingPayments = async (
   clubId: number,
   tournamentId?: number,
-): Promise<PaymentReceiptWithRelations[]> => {
-  return prisma.paymentReceipt.findMany({
-    where: {
-      status: PaymentStatus.pending,
-      registration: {
-        tournament: {
-          organizerId: clubId,
-          ...(tournamentId !== undefined && { id: tournamentId }),
-        },
+  page: number = 1,
+  limit: number = 10,
+): Promise<{ nodes: PaymentReceiptWithRelations[]; totalCount: number; hasNextPage: boolean }> => {
+  const where = {
+    status: PaymentStatus.pending,
+    registration: {
+      tournament: {
+        organizerId: clubId,
+        ...(tournamentId !== undefined && { id: tournamentId }),
       },
     },
-    select: paymentReceiptSelect,
-  });
+  };
+
+  const [nodes, totalCount] = await Promise.all([
+    prisma.paymentReceipt.findMany({
+      where,
+      select: paymentReceiptSelect,
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { date: 'desc' },
+    }),
+    prisma.paymentReceipt.count({ where }),
+  ]);
+
+  return { nodes, totalCount, hasNextPage: page * limit < totalCount };
 };
 
 export const findPaymentReceiptById = async (
