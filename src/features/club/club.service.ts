@@ -100,7 +100,9 @@ export const removePlayerFromClub = async (
 export const getPendingPayments = async (
   userId: number,
   tournamentId?: string,
-): Promise<PaymentReceiptWithRelations[]> => {
+  page: number = 1,
+  limit: number = 10,
+) => {
   const club = await clubModel.findClubByDelegateUserId(userId);
   if (!club)
     throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
@@ -108,6 +110,8 @@ export const getPendingPayments = async (
   return clubModel.findPendingPayments(
     club.id,
     tournamentId ? Number(tournamentId) : undefined,
+    page,
+    limit,
   );
 };
 
@@ -133,7 +137,7 @@ export const validatePayment = async (
 
   const updatedReceipt = await clubModel.updatePaymentStatus(paymentReceiptId, 'validated', userId, new Date());
 
-  const playerUserId = receipt.registration?.player.userId;
+  const playerUserId = receipt.registration?.player.user.id;
   const tournamentId = receipt.registration?.tournament.id;
   const tournamentName = receipt.registration?.tournament.name;
   if (playerUserId && tournamentId) {
@@ -178,7 +182,7 @@ export const rejectPayment = async (
 
   const updatedReceipt = await clubModel.updatePaymentStatus(paymentReceiptId, 'rejected', userId, new Date());
 
-  const playerUserId = receipt.registration?.player.userId;
+  const playerUserId = receipt.registration?.player.user.id;
   const tournamentId = receipt.registration?.tournament.id;
   const tournamentName = receipt.registration?.tournament.name;
   if (playerUserId && tournamentId) {
@@ -251,8 +255,16 @@ export const getClubPlayers = async (params: {
 export const searchUserByEmail = async (
   email: string,
   _requestingUserId: number,
-): Promise<{ id: number; email: string; fullName: string; role: string } | null> => {
-  return clubModel.findUserByEmail(email);
+): Promise<{ id: number; email: string; fullName: string; role: string; playerId: number | null } | null> => {
+  const user = await clubModel.findUserByEmail(email);
+  if (!user) return null;
+  return {
+    id: user.id,
+    email: user.email,
+    fullName: user.fullName,
+    role: user.role,
+    playerId: user.player?.id ?? null,
+  };
 };
 
 export const addDelegate = async (
@@ -312,7 +324,7 @@ export const getClubLogoUploadUrl = async (
   if (!club)
     throw new GraphQLError('Club not found', { extensions: { code: 'NOT_FOUND' } });
 
-  const isDelegate = club.delegates.some((d) => d.id === userId);
+  const isDelegate = club.delegates.some((d) => d.userId === userId);
   if (!isDelegate)
     throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
 
@@ -333,7 +345,7 @@ export const confirmClubLogoUpload = async (
   if (!club)
     throw new GraphQLError('Club not found', { extensions: { code: 'NOT_FOUND' } });
 
-  const isDelegate = club.delegates.some((d) => d.id === userId);
+  const isDelegate = club.delegates.some((d) => d.userId === userId);
   if (!isDelegate)
     throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
 
