@@ -4,6 +4,7 @@ export const clubTypeDefs = `
     fullName: String!
     email: String!
     phone: String
+    playerId: ID
   }
 
   type ClubPlayerElo {
@@ -53,7 +54,7 @@ export const clubTypeDefs = `
 
   type PendingPaymentRegistration {
     id: ID!
-    player: ClubDelegate!
+    player: DashboardPlayer!
     tournament: PendingPaymentTournament!
   }
 
@@ -64,6 +65,12 @@ export const clubTypeDefs = `
     fileUrl: String!
     status: String!
     registration: PendingPaymentRegistration!
+  }
+
+  type PendingPaymentsConnection {
+    nodes: [PendingPayment!]!
+    totalCount: Int!
+    hasNextPage: Boolean!
   }
 
   type ExpiringLicense {
@@ -142,7 +149,7 @@ export const clubTypeDefs = `
     club(id: ID!): Club
     myClub: Club
     delegateDashboard: DelegateDashboard!
-    pendingPayments(tournamentId: ID): [PendingPayment!]!
+    pendingPayments(tournamentId: ID, page: Int, limit: Int): PendingPaymentsConnection!
     expiringLicenses(daysThreshold: Int): [ExpiringLicense!]!
     clubPlayers(
       clubId: ID!
