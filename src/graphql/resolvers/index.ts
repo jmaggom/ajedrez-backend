@@ -26,4 +26,5 @@ export const resolvers = {
     Tournament: tournamentResolvers.Tournament,
     Registration: tournamentResolvers.Registration,
     Club: clubResolvers.Club,
+    PendingPaymentRegistration: clubResolvers.PendingPaymentRegistration,
 }
