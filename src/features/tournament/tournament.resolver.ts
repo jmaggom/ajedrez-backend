@@ -11,6 +11,11 @@ export const tournamentResolvers = {
   Tournament: {
     status: (parent: { status: string }) => parent.status.toUpperCase(),
     mode: (parent: { mode: string }) => parent.mode.toUpperCase(),
+    requirements: (parent: { requirements: Record<string, unknown> }) => ({
+      requireFideId: parent.requirements?.requireFideId ?? false,
+      requireFadaId: parent.requirements?.requireFadaId ?? false,
+      eloFilter: parent.requirements?.eloFilter ?? null,
+    }),
   },
   Registration: {
     status: (parent: { status: string }) => parent.status.toUpperCase(),
