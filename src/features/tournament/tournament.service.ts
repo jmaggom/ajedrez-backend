@@ -281,3 +281,50 @@ export const cancelRegistration = async (
 
   return true;
 };
+
+export const generatePairings = async (
+  tournamentId: number,
+  roundNumber: number,
+  userId: number,
+): Promise<Array<{ id: number; roundNumber: number; whitePlayerId: number; blackPlayerId: number }>> => {
+  const tournament = await tournamentModel.findTournamentById(tournamentId);
+  if (!tournament)
+    throw new GraphQLError('Tournament not found', { extensions: { code: 'NOT_FOUND' } });
+
+  const user = await tournamentModel.findUserWithRole(userId);
+  if (!user)
+    throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
+
+  const isDelegate = user.role === Role.delegate && user.clubId === tournament.organizerId;
+  const isReferee = user.role === Role.referee;
+
+  if (!isDelegate && !isReferee)
+    throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
+
+  try {
+    return await tournamentModel.generateRandomPairings(tournamentId, roundNumber);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Esta ronda ya tiene emparejamientos publicados') {
+      throw new GraphQLError(error.message, { extensions: { code: 'BAD_USER_INPUT' } });
+    }
+    throw error;
+  }
+};
+
+export const closeTournament = async (
+  tournamentId: number,
+  userId: number,
+): Promise<TournamentWithRelations> => {
+  const tournament = await tournamentModel.findTournamentById(tournamentId);
+  if (!tournament)
+    throw new GraphQLError('Tournament not found', { extensions: { code: 'NOT_FOUND' } });
+
+  const user = await tournamentModel.findUserWithRole(userId);
+  const isAdmin = user?.role === Role.admin;
+  const isOrganizerDelegate = user?.role === Role.delegate && user.clubId === tournament.organizerId;
+  if (!user || (!isAdmin && !isOrganizerDelegate))
+    throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
+
+  const closedTournament = await tournamentModel.closeTournamentById(tournamentId);
+  return tournamentModel.findTournamentById(closedTournament.id) as Promise<TournamentWithRelations>;
+};

@@ -178,11 +178,20 @@ export const tournamentTypeDefs = `
     nearbyTournaments(lat: Float!, lng: Float!, radiusKm: Int!): [Tournament!]!
   }
 
+  type PairingGame {
+    id: ID!
+    roundNumber: Int!
+    whitePlayerId: ID!
+    blackPlayerId: ID!
+  }
+
   extend type Mutation {
     createTournament(input: CreateTournamentInput!): Tournament!
     updateTournament(id: ID!, input: UpdateTournamentInput!): Tournament!
     deleteTournament(id: ID!): DeleteTournamentResult!
     registerTournament(tournamentId: ID!): RegistrationResult!
     cancelRegistration(registrationId: ID!): Boolean!
+    generatePairings(tournamentId: ID!, roundNumber: Int!): [PairingGame!]!
+    closeTournament(tournamentId: ID!): Tournament!
   }
 `;
