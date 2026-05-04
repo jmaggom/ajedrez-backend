@@ -21,10 +21,13 @@ export const resolvers = {
         ...tournamentResolvers.Mutation,
         ...clubResolvers.Mutation,
         ...gameResolvers.Mutation,
+        ...paymentResolvers.Mutation,
         ...notificationResolvers.Mutation,
     },
     Tournament: tournamentResolvers.Tournament,
     Registration: tournamentResolvers.Registration,
+    PlayerProfile: tournamentResolvers.PlayerProfile,
     Club: clubResolvers.Club,
     PendingPaymentRegistration: clubResolvers.PendingPaymentRegistration,
+    PaymentReceipt: paymentResolvers.PaymentReceipt,
 }
