@@ -11,6 +11,14 @@ export const tournamentResolvers = {
   Tournament: {
     status: (parent: { status: string }) => parent.status.toUpperCase(),
     mode: (parent: { mode: string }) => parent.mode.toUpperCase(),
+    requirements: (parent: { requirements: Record<string, unknown> }) => ({
+      requireFideId: parent.requirements?.requireFideId ?? false,
+      requireFadaId: parent.requirements?.requireFadaId ?? false,
+      eloFilter: parent.requirements?.eloFilter ?? null,
+    }),
+  },
+  PlayerProfile: {
+    name: (parent: { user?: { fullName: string } }) => parent.user?.fullName ?? null,
   },
   Registration: {
     status: (parent: { status: string }) => parent.status.toUpperCase(),
@@ -20,8 +28,8 @@ export const tournamentResolvers = {
     tournaments: (
       _: unknown,
       { filters, page, limit }: { filters?: TournamentFiltersInput; page?: number; limit?: number },
-      _ctx: Context,
-    ) => tournamentService.getTournaments({ ...filters, page, limit }),
+      ctx: Context,
+    ) => tournamentService.getTournaments({ ...filters, page, limit }, ctx.user?.id),
 
     tournament: (
       _: unknown,
@@ -85,6 +93,26 @@ export const tournamentResolvers = {
       if (!context.user)
         throw new GraphQLError('Unauthenticated', { extensions: { code: 'UNAUTHENTICATED' } });
       return tournamentService.cancelRegistration(Number(registrationId), context.user.id);
+    },
+
+    generatePairings: (
+      _: unknown,
+      { tournamentId, roundNumber }: { tournamentId: string; roundNumber: number },
+      context: Context,
+    ) => {
+      if (!context.user)
+        throw new GraphQLError('Unauthenticated', { extensions: { code: 'UNAUTHENTICATED' } });
+      return tournamentService.generatePairings(Number(tournamentId), roundNumber, context.user.id);
+    },
+
+    closeTournament: (
+      _: unknown,
+      { tournamentId }: { tournamentId: string },
+      context: Context,
+    ) => {
+      if (!context.user)
+        throw new GraphQLError('Unauthenticated', { extensions: { code: 'UNAUTHENTICATED' } });
+      return tournamentService.closeTournament(Number(tournamentId), context.user.id);
     },
   },
 };

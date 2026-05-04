@@ -1,4 +1,5 @@
 import { GraphQLError } from 'graphql';
+import { RegistrationStatus } from '@prisma/client';
 import * as paymentModel from './payment.model';
 import type {
   PaymentHistoryEntry,
@@ -56,9 +57,15 @@ export const getReceiptUploadUrl = async (
     fileName: input.fileName,
   });
 
-  const { uploadUrl, token } = await storageGetReceiptUploadUrl({ path });
-
-  return { uploadUrl, token, path };
+  try {
+    const { uploadUrl, token } = await storageGetReceiptUploadUrl({ path });
+    return { uploadUrl, token, path };
+  } catch (err) {
+    throw new GraphQLError(
+      err instanceof Error ? err.message : 'Storage error al generar URL de subida',
+      { extensions: { code: 'STORAGE_ERROR' } },
+    );
+  }
 };
 
 export const confirmReceiptUpload = async (
@@ -85,6 +92,13 @@ export const confirmReceiptUpload = async (
     amount: input.amount,
     fileUrl: input.path,
   });
+
+  if (registration.status === 'awaiting_payment') {
+    await paymentModel.updateRegistrationStatus(
+      Number(input.registrationId),
+      RegistrationStatus.pending,
+    );
+  }
 
   const receipt = await paymentModel.findPaymentReceiptById(created.id);
   if (!receipt)

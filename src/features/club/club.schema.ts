@@ -4,6 +4,7 @@ export const clubTypeDefs = `
     fullName: String!
     email: String!
     phone: String
+    playerId: ID
   }
 
   type ClubPlayerElo {
@@ -53,7 +54,7 @@ export const clubTypeDefs = `
 
   type PendingPaymentRegistration {
     id: ID!
-    player: ClubDelegate!
+    player: DashboardPlayer!
     tournament: PendingPaymentTournament!
   }
 
@@ -66,9 +67,15 @@ export const clubTypeDefs = `
     registration: PendingPaymentRegistration!
   }
 
+  type PendingPaymentsConnection {
+    nodes: [PendingPayment!]!
+    totalCount: Int!
+    hasNextPage: Boolean!
+  }
+
   type ExpiringLicense {
     id: ID!
-    player: ClubDelegate!
+    player: DashboardPlayer!
     type: String!
     expiresAt: String!
   }
@@ -94,7 +101,7 @@ export const clubTypeDefs = `
 
   type DelegateDashboard {
     pendingPaymentsCount: Int!
-    recentRegistrations: [RecentRegistration!]!
+    expiringLicensesCount: Int!
     expiringLicenses: [ExpiringLicense!]!
   }
 
@@ -125,12 +132,24 @@ export const clubTypeDefs = `
     hasNextPage: Boolean!
   }
 
+  type ClubLogoUploadUrl {
+    uploadUrl: String!
+    token: String!
+    path: String!
+  }
+
+  type RecentRegistrationsConnection {
+    nodes: [RecentRegistration!]!
+    totalCount: Int!
+    hasNextPage: Boolean!
+  }
+
   extend type Query {
     clubs(filters: ClubFiltersInput, page: Int, limit: Int): ClubsConnection!
     club(id: ID!): Club
     myClub: Club
     delegateDashboard: DelegateDashboard!
-    pendingPayments(tournamentId: ID): [PendingPayment!]!
+    pendingPayments(tournamentId: ID, page: Int, limit: Int): PendingPaymentsConnection!
     expiringLicenses(daysThreshold: Int): [ExpiringLicense!]!
     clubPlayers(
       clubId: ID!
@@ -138,6 +157,8 @@ export const clubTypeDefs = `
       page: Int
       limit: Int
     ): ClubPlayersConnection!
+    searchUserByEmail(email: String!): ClubDelegate
+    recentRegistrations(page: Int, limit: Int): RecentRegistrationsConnection!
   }
 
   extend type Mutation {
@@ -146,5 +167,9 @@ export const clubTypeDefs = `
     removePlayerFromClub(playerId: ID!): Club!
     validatePayment(paymentReceiptId: ID!): PendingPayment!
     rejectPayment(paymentReceiptId: ID!, reason: String!): PendingPayment!
+    addDelegate(clubId: ID!, userEmail: String!): Club!
+    removeDelegate(clubId: ID!, delegateId: ID!): Club!
+    getClubLogoUploadUrl(clubId: ID!, fileName: String!, mimeType: String!): ClubLogoUploadUrl!
+    confirmClubLogoUpload(clubId: ID!, path: String!): Club!
   }
 `;

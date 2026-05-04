@@ -1,5 +1,11 @@
 import type { Prisma, Registration } from '@prisma/client';
 
+export enum TournamentMode {
+  CLASSICAL = 'CLASSICAL',
+  RAPID = 'RAPID',
+  BLITZ = 'BLITZ',
+}
+
 export type EloFilter = {
   minFideClassical?: number;
   maxFideClassical?: number;
@@ -38,6 +44,8 @@ export type CreateTournamentInput = {
   description?: string;
   eloEligible: boolean;
   requirements: TournamentRequirements;
+  publishNow?: boolean;
+  mode: TournamentMode;
 };
 
 export type UpdateTournamentInput = Partial<CreateTournamentInput>;
@@ -103,7 +111,9 @@ export const tournamentSelect = {
   organizer: true,
   registrations: {
     include: {
-      player: true,
+      player: {
+        include: { user: { select: { fullName: true } } },
+      },
     },
   },
 } satisfies Prisma.TournamentSelect;

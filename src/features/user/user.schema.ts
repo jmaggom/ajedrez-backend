@@ -40,14 +40,28 @@ export const userTypeDefs = `
     updatedAt: String!
   }
 
+  type TournamentHistorySummary {
+    id: ID!
+    name: String!
+    startDate: String!
+    registrationStatus: String!
+  }
+
   type PlayerProfile {
     id: Int!
+    name: String
     fideId: String
     birthDate: String
     federation: String
     clubId: ID
     elo: EloProfile
     eloHistory: [EloHistoryEntry!]!
+    licenses: [PlayerLicense!]!
+  }
+
+  type DelegateProfile {
+    id: Int!
+    clubId: ID!
   }
 
   type UserProfile {
@@ -58,6 +72,7 @@ export const userTypeDefs = `
     phone: String
     avatarUrl: String
     player: PlayerProfile
+    delegate: DelegateProfile
   }
 
   type AvatarUploadUrl {
@@ -78,8 +93,14 @@ export const userTypeDefs = `
     birthDate: String
   }
 
+  input ChangePasswordInput {
+    currentPassword: String!
+    newPassword: String!
+  }
+
   extend type Query {
     me: UserProfile!
+    myTournamentHistory: [TournamentHistorySummary!]!
   }
 
   extend type Mutation {
@@ -87,5 +108,6 @@ export const userTypeDefs = `
     syncFideData: UserProfile!
     getAvatarUploadUrl(input: GetAvatarUploadUrlInput!): AvatarUploadUrl!
     confirmAvatarUpload(path: String!): UserProfile!
+    changePassword(input: ChangePasswordInput!): Boolean!
   }
 `;

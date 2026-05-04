@@ -41,10 +41,20 @@ const validateEloFilter = (
 
 export const getTournaments = async (
   filters: TournamentFiltersInput,
+  userId?: number,
 ): Promise<{ nodes: TournamentWithRelations[]; totalCount: number; hasNextPage: boolean }> => {
   const page = filters.page ?? 1;
   const limit = filters.limit ?? 20;
-  const { nodes, totalCount } = await tournamentModel.findTournaments(filters);
+
+  let myClubId: number | undefined;
+  if (userId) {
+    const user = await tournamentModel.findUserWithRole(userId);
+    if (user?.role === Role.delegate && user.clubId) {
+      myClubId = user.clubId;
+    }
+  }
+
+  const { nodes, totalCount } = await tournamentModel.findTournaments(filters, myClubId);
   const hasNextPage = totalCount > page * limit;
   return { nodes, totalCount, hasNextPage };
 };
@@ -67,20 +77,22 @@ export const createTournament = async (
   if (user.role === Role.delegate) {
     if (!user.clubId)
       throw new GraphQLError('No club assigned', { extensions: { code: 'NO_CLUB_ASSIGNED' } });
-    const activeCount = await tournamentModel.countActiveTournamentsByOrganizer(user.clubId);
-    if (activeCount >= FREEMIUM_MAX_ACTIVE_TOURNAMENTS)
-      throw new GraphQLError('Active tournament limit reached', { extensions: { code: 'FREEMIUM_LIMIT_REACHED' } });
+    // TODO(freemium): reactivar cuando se implemente el plan de suscripción
+    // const activeCount = await tournamentModel.countActiveTournamentsByOrganizer(user.clubId);
+    // if (activeCount >= FREEMIUM_MAX_ACTIVE_TOURNAMENTS)
+    //   throw new GraphQLError('Active tournament limit reached', { extensions: { code: 'FREEMIUM_LIMIT_REACHED' } });
   }
 
   const organizerId = user.clubId!;
 
-  if (input.geoNotificationActive) {
-    const club = await tournamentModel.findClubById(organizerId);
-    if (!club?.planActivo)
-      throw new GraphQLError('La geo-notificación requiere plan Club Plus', {
-        extensions: { code: 'PREMIUM_REQUIRED' },
-      });
-  }
+  // TODO(premium): reactivar cuando se implemente el plan Club Plus
+  // if (input.geoNotificationActive) {
+  //   const club = await tournamentModel.findClubById(organizerId);
+  //   if (!club?.planActivo)
+  //     throw new GraphQLError('La geo-notificación requiere plan Club Plus', {
+  //       extensions: { code: 'PREMIUM_REQUIRED' },
+  //     });
+  // }
 
   const tournament = await tournamentModel.createTournament(organizerId, input);
 
@@ -194,10 +206,14 @@ export const registerTournament = async (
   const activeCount = await tournamentModel.countActiveRegistrations(tournamentId);
 
   if (activeCount < tournament.availableSlots) {
+    const initialStatus = tournament.registrationFee > 0
+      ? RegistrationStatus.awaiting_payment
+      : RegistrationStatus.pending;
+
     const registration = await tournamentModel.createRegistration(
       player.id,
       tournamentId,
-      RegistrationStatus.pending,
+      initialStatus,
     );
     try {
       await sendPushNotification({
@@ -280,4 +296,51 @@ export const cancelRegistration = async (
   }
 
   return true;
+};
+
+export const generatePairings = async (
+  tournamentId: number,
+  roundNumber: number,
+  userId: number,
+): Promise<Array<{ id: number; roundNumber: number; whitePlayerId: number; blackPlayerId: number }>> => {
+  const tournament = await tournamentModel.findTournamentById(tournamentId);
+  if (!tournament)
+    throw new GraphQLError('Tournament not found', { extensions: { code: 'NOT_FOUND' } });
+
+  const user = await tournamentModel.findUserWithRole(userId);
+  if (!user)
+    throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
+
+  const isDelegate = user.role === Role.delegate && user.clubId === tournament.organizerId;
+  const isReferee = user.role === Role.referee;
+
+  if (!isDelegate && !isReferee)
+    throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
+
+  try {
+    return await tournamentModel.generateRandomPairings(tournamentId, roundNumber);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Esta ronda ya tiene emparejamientos publicados') {
+      throw new GraphQLError(error.message, { extensions: { code: 'BAD_USER_INPUT' } });
+    }
+    throw error;
+  }
+};
+
+export const closeTournament = async (
+  tournamentId: number,
+  userId: number,
+): Promise<TournamentWithRelations> => {
+  const tournament = await tournamentModel.findTournamentById(tournamentId);
+  if (!tournament)
+    throw new GraphQLError('Tournament not found', { extensions: { code: 'NOT_FOUND' } });
+
+  const user = await tournamentModel.findUserWithRole(userId);
+  const isAdmin = user?.role === Role.admin;
+  const isOrganizerDelegate = user?.role === Role.delegate && user.clubId === tournament.organizerId;
+  if (!user || (!isAdmin && !isOrganizerDelegate))
+    throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
+
+  const closedTournament = await tournamentModel.closeTournamentById(tournamentId);
+  return tournamentModel.findTournamentById(closedTournament.id) as Promise<TournamentWithRelations>;
 };

@@ -1,12 +1,15 @@
-import { EloSource } from "@prisma/client";
+import { EloSource, RegistrationStatus } from "@prisma/client";
 import { prisma } from "../../config/database";
-import { playerSelect, SyncPlayerFideDataInput, UserWithPlayer } from "./user.types";
+import { playerSelect, delegateSelect, SyncPlayerFideDataInput, UserWithPlayer } from "./user.types";
 
 
 export const findUserById = async (id: number): Promise<UserWithPlayer | null> => {
     return prisma.user.findUnique({
         where: { id },
-        include: { player: { select: playerSelect } },
+        include: {
+            player: { select: playerSelect },
+            delegate: { select: delegateSelect },
+        },
     });
 };
 
@@ -17,7 +20,10 @@ export const updateUserAvatarUrl = async (
     return prisma.user.update({
         where: { id: userId },
         data: { avatarUrl },
-        include: { player: { select: playerSelect } },
+        include: {
+            player: { select: playerSelect },
+            delegate: { select: delegateSelect },
+        },
     });
 };
 
@@ -32,7 +38,10 @@ export const updateUserProfile = async (
         return prisma.user.update({
             where: { id: userId },
             data: userData,
-            include: { player: { select: playerSelect } },
+            include: {
+                player: { select: playerSelect },
+                delegate: { select: delegateSelect },
+            },
         });
     }
 
@@ -41,9 +50,39 @@ export const updateUserProfile = async (
         await tx.player.update({ where: { userId }, data: playerData });
         return tx.user.findUniqueOrThrow({
             where: { id: userId },
-            include: { player: { select: playerSelect } },
+            include: {
+                player: { select: playerSelect },
+                delegate: { select: delegateSelect },
+            },
         });
     });
+};
+
+export const findTournamentHistoryByUserId = async (userId: number) => {
+    const player = await prisma.player.findUnique({
+        where: { userId },
+        select: {
+            registrations: {
+                where: { status: { not: RegistrationStatus.cancelled } },
+                select: {
+                    status: true,
+                    tournament: {
+                        select: { id: true, name: true, startDate: true },
+                    },
+                },
+                orderBy: { registeredAt: 'desc' },
+            },
+        },
+    });
+
+    if (!player) return [];
+
+    return player.registrations.map((r) => ({
+        id: String(r.tournament.id),
+        name: r.tournament.name,
+        startDate: String(r.tournament.startDate.getTime()),
+        registrationStatus: r.status.toUpperCase(),
+    }));
 };
 
 export const syncPlayerFideData = async (
@@ -100,7 +139,16 @@ export const syncPlayerFideData = async (
 
         return tx.user.findUniqueOrThrow({
             where: { id: userId },
-            include: { player: { select: playerSelect } },
+            include: {
+                player: { select: playerSelect },
+                delegate: { select: delegateSelect },
+            },
         });
     });
 };
+
+export const findUserPasswordById = async (id: number) =>
+    prisma.user.findUnique({ where: { id }, select: { password: true } });
+
+export const updateUserPassword = async (id: number, hashedPassword: string) =>
+    prisma.user.update({ where: { id }, data: { password: hashedPassword } });

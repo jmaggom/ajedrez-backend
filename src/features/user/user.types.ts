@@ -66,6 +66,13 @@ export type EloHistoryEntry = {
     updatedAt: Date;
 };
 
+export type PlayerLicense = {
+    id: number;
+    type: string;
+    status: string;
+    expiresAt: Date;
+};
+
 export type PlayerProfile = {
     id: number;
     fideId: string | null;
@@ -74,6 +81,12 @@ export type PlayerProfile = {
     clubId: number | null;
     elo: EloProfile | null;
     eloHistory: EloHistoryEntry[];
+    licenses: PlayerLicense[];
+};
+
+export type DelegateProfile = {
+    id: number;
+    clubId: number;
 };
 
 export type UserProfile = {
@@ -84,6 +97,7 @@ export type UserProfile = {
     phone: string | null;
     avatarUrl: string | null;
     player: PlayerProfile | null;
+    delegate: DelegateProfile | null;
 };
 
 export const playerSelect = {
@@ -101,10 +115,21 @@ export const playerSelect = {
     eloHistory: {
         orderBy: { period: "asc" as const },
     },
+    licenses: {
+        select: { id: true, type: true, status: true, expiresAt: true },
+    },
+};
+
+export const delegateSelect = {
+    id: true,
+    clubId: true,
 };
 
 export type UserWithPlayer = Prisma.UserGetPayload<{
-    include: { player: { select: typeof playerSelect } };
+    include: {
+        player: { select: typeof playerSelect };
+        delegate: { select: typeof delegateSelect };
+    };
 }>;
 
 export type SyncPlayerFideDataInput = {
@@ -127,5 +152,10 @@ export type SyncPlayerFideDataInput = {
         rapidGames: number | null;
         blitzGames: number | null;
     }>;
+};
+
+export type ChangePasswordInput = {
+    currentPassword: string;
+    newPassword: string;
 };
 

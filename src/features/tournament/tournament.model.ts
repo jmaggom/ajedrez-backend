@@ -12,10 +12,12 @@ import type {
   TournamentWithRelations,
   UpdateTournamentInput,
 } from './tournament.types';
+import { TournamentMode } from './tournament.types';
 import { tournamentSelect } from './tournament.types';
 
 export const findTournaments = async (
   filters: TournamentFiltersInput,
+  myClubId?: number,
 ): Promise<{ nodes: TournamentWithRelations[]; totalCount: number }> => {
   const page = filters.page ?? 1;
   const limit = filters.limit ?? 20;
@@ -47,6 +49,19 @@ export const findTournaments = async (
     if (filters.dateTo) where.startDate.lte = new Date(filters.dateTo);
   }
 
+  // Filtro de drafts: si NO se pidió un status específico, excluir drafts
+  // salvo los del propio club del delegado
+  if (!filters.status) {
+    if (myClubId !== undefined) {
+      where.OR = [
+        { status: { not: TournamentStatus.draft } },
+        { status: TournamentStatus.draft, organizerId: myClubId },
+      ];
+    } else {
+      where.status = { not: TournamentStatus.draft };
+    }
+  }
+
   const [nodes, totalCount] = await prisma.$transaction([
     prisma.tournament.findMany({ where, select: tournamentSelect, skip, take: limit }),
     prisma.tournament.count({ where }),
@@ -64,10 +79,16 @@ export const findTournamentById = async (
 export const findUserWithRole = async (
   userId: number,
 ): Promise<{ id: number; role: string; clubId: number | null } | null> => {
-  return prisma.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, role: true, clubId: true },
+    select: { id: true, role: true, delegate: { select: { clubId: true } } },
   });
+  if (!user) return null;
+  return {
+    id: user.id,
+    role: user.role,
+    clubId: user.delegate?.clubId ?? null,
+  };
 };
 
 export const countActiveTournamentsByOrganizer = async (
@@ -92,7 +113,9 @@ export const findRegistration = async (
   playerId: number,
   tournamentId: number,
 ): Promise<Registration | null> => {
-  return prisma.registration.findFirst({ where: { playerId, tournamentId } });
+  return prisma.registration.findFirst({
+    where: { playerId, tournamentId, status: { not: RegistrationStatus.cancelled } }
+  });
 };
 
 export const countActiveRegistrations = async (tournamentId: number): Promise<number> => {
@@ -114,9 +137,10 @@ export const createRegistration = async (
   playerId: number,
   tournamentId: number,
   status: RegistrationStatus,
-): Promise<Registration> => {
+) => {
   return prisma.registration.create({
     data: { playerId, tournamentId, status },
+    include: { player: true },
   });
 };
 
@@ -172,6 +196,7 @@ export const createTournament = async (
       startDate: new Date(input.startDate),
       endDate: new Date(input.endDate),
       format: input.format,
+      mode: { [TournamentMode.CLASSICAL]: 'classical', [TournamentMode.RAPID]: 'rapid', [TournamentMode.BLITZ]: 'blitz' }[input.mode] ?? 'classical',
       rounds: input.rounds,
       timeControl: input.timeControl,
       availableSlots: input.availableSlots,
@@ -179,6 +204,7 @@ export const createTournament = async (
       description: input.description,
       eloEligible: input.eloEligible,
       requirements: input.requirements,
+      status: input.publishNow ? TournamentStatus.open : TournamentStatus.draft,
     },
   });
 };
@@ -270,4 +296,74 @@ export const findNearbyTournaments = async (
   return candidates.filter(
     (t) => haversineKm(lat, lng, t.latitude!, t.longitude!) <= radiusKm,
   );
+};
+
+export const findConfirmedRegistrationsByTournament = async (
+  tournamentId: number,
+): Promise<Array<{ playerId: number }>> => {
+  const registrations = await prisma.registration.findMany({
+    where: {
+      tournamentId,
+      status: RegistrationStatus.confirmed,
+    },
+    select: { playerId: true },
+  });
+  return registrations;
+};
+
+export const findGamesByTournamentAndRound = async (
+  tournamentId: number,
+  roundNumber: number,
+) => {
+  return prisma.game.findMany({
+    where: { tournamentId, roundNumber },
+    select: { id: true },
+  });
+};
+
+export const generateRandomPairings = async (
+  tournamentId: number,
+  roundNumber: number,
+): Promise<Array<{ id: number; roundNumber: number; whitePlayerId: number; blackPlayerId: number }>> => {
+  const existingGames = await findGamesByTournamentAndRound(tournamentId, roundNumber);
+  if (existingGames.length > 0) {
+    throw new Error('Esta ronda ya tiene emparejamientos publicados');
+  }
+
+  const registrations = await findConfirmedRegistrationsByTournament(tournamentId);
+  const playerIds = registrations.map((r) => r.playerId);
+
+  // Fisher-Yates shuffle
+  for (let i = playerIds.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [playerIds[i], playerIds[j]] = [playerIds[j], playerIds[i]];
+  }
+
+  const pairings: Array<{ tournamentId: number; roundNumber: number; whitePlayerId: number; blackPlayerId: number }> = [];
+  for (let i = 0; i + 1 < playerIds.length; i += 2) {
+    pairings.push({
+      tournamentId,
+      roundNumber,
+      whitePlayerId: playerIds[i],
+      blackPlayerId: playerIds[i + 1],
+    });
+  }
+
+  if (pairings.length === 0) return [];
+
+  await prisma.game.createMany({ data: pairings });
+
+  const createdGames = await prisma.game.findMany({
+    where: { tournamentId, roundNumber },
+    select: { id: true, roundNumber: true, whitePlayerId: true, blackPlayerId: true },
+  });
+
+  return createdGames;
+};
+
+export const closeTournamentById = async (tournamentId: number): Promise<Tournament> => {
+  return prisma.tournament.update({
+    where: { id: tournamentId },
+    data: { status: TournamentStatus.finished },
+  });
 };
