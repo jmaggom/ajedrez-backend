@@ -27,6 +27,7 @@ enum RegistrationStatus {
   pending
   waitlist
   cancelled
+  awaiting_payment
 }
 
 enum PaymentStatus {
