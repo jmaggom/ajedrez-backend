@@ -12,10 +12,12 @@ import type {
   TournamentWithRelations,
   UpdateTournamentInput,
 } from './tournament.types';
+import { TournamentMode } from './tournament.types';
 import { tournamentSelect } from './tournament.types';
 
 export const findTournaments = async (
   filters: TournamentFiltersInput,
+  myClubId?: number,
 ): Promise<{ nodes: TournamentWithRelations[]; totalCount: number }> => {
   const page = filters.page ?? 1;
   const limit = filters.limit ?? 20;
@@ -45,6 +47,19 @@ export const findTournaments = async (
     where.startDate = {};
     if (filters.dateFrom) where.startDate.gte = new Date(filters.dateFrom);
     if (filters.dateTo) where.startDate.lte = new Date(filters.dateTo);
+  }
+
+  // Filtro de drafts: si NO se pidió un status específico, excluir drafts
+  // salvo los del propio club del delegado
+  if (!filters.status) {
+    if (myClubId !== undefined) {
+      where.OR = [
+        { status: { not: TournamentStatus.draft } },
+        { status: TournamentStatus.draft, organizerId: myClubId },
+      ];
+    } else {
+      where.status = { not: TournamentStatus.draft };
+    }
   }
 
   const [nodes, totalCount] = await prisma.$transaction([
@@ -98,7 +113,9 @@ export const findRegistration = async (
   playerId: number,
   tournamentId: number,
 ): Promise<Registration | null> => {
-  return prisma.registration.findFirst({ where: { playerId, tournamentId } });
+  return prisma.registration.findFirst({
+    where: { playerId, tournamentId, status: { not: RegistrationStatus.cancelled } }
+  });
 };
 
 export const countActiveRegistrations = async (tournamentId: number): Promise<number> => {
@@ -120,9 +137,10 @@ export const createRegistration = async (
   playerId: number,
   tournamentId: number,
   status: RegistrationStatus,
-): Promise<Registration> => {
+) => {
   return prisma.registration.create({
     data: { playerId, tournamentId, status },
+    include: { player: true },
   });
 };
 
@@ -178,6 +196,7 @@ export const createTournament = async (
       startDate: new Date(input.startDate),
       endDate: new Date(input.endDate),
       format: input.format,
+      mode: { [TournamentMode.CLASSICAL]: 'classical', [TournamentMode.RAPID]: 'rapid', [TournamentMode.BLITZ]: 'blitz' }[input.mode] ?? 'classical',
       rounds: input.rounds,
       timeControl: input.timeControl,
       availableSlots: input.availableSlots,
@@ -185,6 +204,7 @@ export const createTournament = async (
       description: input.description,
       eloEligible: input.eloEligible,
       requirements: input.requirements,
+      status: input.publishNow ? TournamentStatus.open : TournamentStatus.draft,
     },
   });
 };

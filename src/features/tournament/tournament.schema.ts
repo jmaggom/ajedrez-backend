@@ -17,6 +17,7 @@ export const tournamentTypeDefs = `
     PENDING
     WAITLIST
     CANCELLED
+    AWAITING_PAYMENT
   }
 
   enum PaymentStatus {
@@ -141,6 +142,7 @@ export const tournamentTypeDefs = `
     description: String
     eloEligible: Boolean!
     requirements: TournamentRequirementsInput!
+    publishNow: Boolean
   }
 
   input UpdateTournamentInput {

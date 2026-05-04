@@ -17,6 +17,9 @@ export const tournamentResolvers = {
       eloFilter: parent.requirements?.eloFilter ?? null,
     }),
   },
+  PlayerProfile: {
+    name: (parent: { user?: { fullName: string } }) => parent.user?.fullName ?? null,
+  },
   Registration: {
     status: (parent: { status: string }) => parent.status.toUpperCase(),
     paymentStatus: (parent: { paymentStatus: string }) => parent.paymentStatus.toUpperCase(),
@@ -25,8 +28,8 @@ export const tournamentResolvers = {
     tournaments: (
       _: unknown,
       { filters, page, limit }: { filters?: TournamentFiltersInput; page?: number; limit?: number },
-      _ctx: Context,
-    ) => tournamentService.getTournaments({ ...filters, page, limit }),
+      ctx: Context,
+    ) => tournamentService.getTournaments({ ...filters, page, limit }, ctx.user?.id),
 
     tournament: (
       _: unknown,
