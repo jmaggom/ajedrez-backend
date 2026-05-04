@@ -1,5 +1,5 @@
 import { prisma } from '../../config/database';
-import type { PaymentReceipt } from '@prisma/client';
+import type { PaymentReceipt, RegistrationStatus } from '@prisma/client';
 import { paymentReceiptSelect, type PaymentReceiptWithRelations, registrationWithOwnerSelect, type RegistrationWithOwner } from './payment.types';
 
 
@@ -59,4 +59,14 @@ export const findClubDelegate = async (
     },
   });
   return count > 0;
+};
+
+export const updateRegistrationStatus = async (
+  registrationId: number,
+  status: string,
+): Promise<void> => {
+  await prisma.registration.update({
+    where: { id: registrationId },
+    data: { status: status as RegistrationStatus },
+  });
 };

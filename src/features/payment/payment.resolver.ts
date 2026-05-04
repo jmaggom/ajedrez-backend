@@ -4,6 +4,9 @@ import * as paymentService from './payment.service';
 import type { GetReceiptUploadUrlInput, ConfirmReceiptUploadInput } from './payment.types';
 
 export const paymentResolvers = {
+  PaymentReceipt: {
+    status: (parent: { status: string }) => parent.status.toUpperCase(),
+  },
   Query: {
     myPayments: (
       _: unknown,
