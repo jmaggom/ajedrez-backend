@@ -4,6 +4,7 @@ export const notificationTypeDefs = `
     REGISTRATION
     PAYMENT
     SYSTEM
+    RESULT
   }
 
   enum NotificationStatus {
