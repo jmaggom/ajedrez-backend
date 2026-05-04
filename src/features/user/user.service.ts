@@ -1,5 +1,6 @@
 import { GraphQLError } from "graphql";
-import { UpdateProfileInput, GetAvatarUploadUrlInput, UserProfile, toUserRole } from "./user.types";
+import * as bcrypt from "bcryptjs";
+import { UpdateProfileInput, GetAvatarUploadUrlInput, UserProfile, toUserRole, ChangePasswordInput } from "./user.types";
 import { UserWithPlayer } from "./user.types";
 import * as userModel from "./user.model";
 import { fetchFidePlayerInfo } from "../../common/clients/chesstools.client";
@@ -62,6 +63,12 @@ const toUserProfile = (user: UserWithPlayer): UserProfile => ({
                 blitzGames: entry.blitzGames,
                 updatedAt: entry.updatedAt,
             })),
+            licenses: user.player.licenses.map((l) => ({
+                id: l.id,
+                type: l.type,
+                status: l.status,
+                expiresAt: l.expiresAt,
+            })),
         }
         : null,
     delegate: user.delegate
@@ -118,6 +125,10 @@ export const confirmAvatarUpload = async (
         });
 
     return toUserProfile(updated);
+};
+
+export const getMyTournamentHistory = async (userId: number) => {
+    return userModel.findTournamentHistoryByUserId(userId);
 };
 
 export const getMe = async (userId: number): Promise<UserProfile> => {
@@ -225,4 +236,21 @@ export const syncFideData = async (userId: number): Promise<UserProfile> => {
         throw new GraphQLError("User not found after sync", { extensions: { code: "INTERNAL_SERVER_ERROR" } });
     }
     return toUserProfile(updatedUser);
+};
+
+export const changePassword = async (
+    userId: number,
+    input: ChangePasswordInput
+): Promise<boolean> => {
+    const user = await userModel.findUserPasswordById(userId);
+    if (!user)
+        throw new GraphQLError("User not found", { extensions: { code: "NOT_FOUND" } });
+
+    const isMatch = await bcrypt.compare(input.currentPassword, user.password);
+    if (!isMatch)
+        throw new GraphQLError("La contraseña actual es incorrecta", { extensions: { code: "BAD_USER_INPUT" } });
+
+    const hash = await bcrypt.hash(input.newPassword, 10);
+    await userModel.updateUserPassword(userId, hash);
+    return true;
 };

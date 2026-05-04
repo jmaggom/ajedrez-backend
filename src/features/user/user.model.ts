@@ -1,4 +1,4 @@
-import { EloSource } from "@prisma/client";
+import { EloSource, RegistrationStatus } from "@prisma/client";
 import { prisma } from "../../config/database";
 import { playerSelect, delegateSelect, SyncPlayerFideDataInput, UserWithPlayer } from "./user.types";
 
@@ -56,6 +56,33 @@ export const updateUserProfile = async (
             },
         });
     });
+};
+
+export const findTournamentHistoryByUserId = async (userId: number) => {
+    const player = await prisma.player.findUnique({
+        where: { userId },
+        select: {
+            registrations: {
+                where: { status: { not: RegistrationStatus.cancelled } },
+                select: {
+                    status: true,
+                    tournament: {
+                        select: { id: true, name: true, startDate: true },
+                    },
+                },
+                orderBy: { registeredAt: 'desc' },
+            },
+        },
+    });
+
+    if (!player) return [];
+
+    return player.registrations.map((r) => ({
+        id: String(r.tournament.id),
+        name: r.tournament.name,
+        startDate: String(r.tournament.startDate.getTime()),
+        registrationStatus: r.status.toUpperCase(),
+    }));
 };
 
 export const syncPlayerFideData = async (
@@ -119,3 +146,9 @@ export const syncPlayerFideData = async (
         });
     });
 };
+
+export const findUserPasswordById = async (id: number) =>
+    prisma.user.findUnique({ where: { id }, select: { password: true } });
+
+export const updateUserPassword = async (id: number, hashedPassword: string) =>
+    prisma.user.update({ where: { id }, data: { password: hashedPassword } });

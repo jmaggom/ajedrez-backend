@@ -66,6 +66,13 @@ export type EloHistoryEntry = {
     updatedAt: Date;
 };
 
+export type PlayerLicense = {
+    id: number;
+    type: string;
+    status: string;
+    expiresAt: Date;
+};
+
 export type PlayerProfile = {
     id: number;
     fideId: string | null;
@@ -74,6 +81,7 @@ export type PlayerProfile = {
     clubId: number | null;
     elo: EloProfile | null;
     eloHistory: EloHistoryEntry[];
+    licenses: PlayerLicense[];
 };
 
 export type DelegateProfile = {
@@ -106,6 +114,9 @@ export const playerSelect = {
     elo: true,
     eloHistory: {
         orderBy: { period: "asc" as const },
+    },
+    licenses: {
+        select: { id: true, type: true, status: true, expiresAt: true },
     },
 };
 
@@ -141,5 +152,10 @@ export type SyncPlayerFideDataInput = {
         rapidGames: number | null;
         blitzGames: number | null;
     }>;
+};
+
+export type ChangePasswordInput = {
+    currentPassword: string;
+    newPassword: string;
 };
 
