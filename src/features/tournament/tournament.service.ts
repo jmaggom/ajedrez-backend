@@ -3,7 +3,6 @@ import { LicenseStatus, LicenseType, Role, RegistrationStatus, TournamentStatus 
 import * as tournamentModel from './tournament.model';
 import { NotificationType } from '@prisma/client';
 import { sendPushNotification, sendBatchPushNotifications } from '../../common/notification/notification.service';
-import { FREEMIUM_MAX_ACTIVE_TOURNAMENTS } from './constants';
 import type {
   CreateTournamentInput,
   DeleteTournamentResult,
