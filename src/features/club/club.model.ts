@@ -1,5 +1,5 @@
 import { prisma } from '../../config/database';
-import { LicenseStatus, PaymentStatus, Prisma } from '@prisma/client';
+import { LicenseStatus, PaymentStatus, Prisma, RegistrationStatus } from '@prisma/client';
 import {
   clubSelect,
   paymentReceiptSelect,
@@ -198,6 +198,13 @@ export const updatePaymentStatus = async (
     },
   });
   return prisma.paymentReceipt.findUniqueOrThrow({ where: { id }, select: paymentReceiptSelect });
+};
+
+export const updateRegistrationPayment = async (
+  registrationId: number,
+  data: { status?: RegistrationStatus; paymentStatus?: PaymentStatus },
+): Promise<void> => {
+  await prisma.registration.update({ where: { id: registrationId }, data });
 };
 
 export const findExpiringLicenses = async (clubId: number, daysThreshold: number) => {
