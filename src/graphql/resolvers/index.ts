@@ -30,4 +30,5 @@ export const resolvers = {
     Club: clubResolvers.Club,
     PendingPaymentRegistration: clubResolvers.PendingPaymentRegistration,
     PaymentReceipt: paymentResolvers.PaymentReceipt,
+    Notification: notificationResolvers.Notification,
 }

@@ -46,7 +46,8 @@ export const sendPushNotification = async ({
       },
     ]);
     await notificationModel.updateNotificationStatus(notificationId, NotificationStatus.sent);
-  } catch {
+  } catch (error) {
+    console.error('[Notification] Failed to send push to userId:', userId, error);
     await notificationModel.updateNotificationStatus(notificationId, NotificationStatus.failed);
   }
 };
@@ -115,7 +116,8 @@ export const sendBatchPushNotifications = async (
           notificationModel.updateNotificationStatus(c.notificationId, NotificationStatus.sent),
         ),
       );
-    } catch {
+    } catch (error) {
+      console.error('[Notification] Failed to send push batch, chunk starting at index:', i, error);
       await Promise.all(
         chunk.map((c) =>
           notificationModel.updateNotificationStatus(c.notificationId, NotificationStatus.failed),

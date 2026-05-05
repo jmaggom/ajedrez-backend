@@ -22,6 +22,12 @@ export const notificationResolvers = {
     },
   },
 
+  Notification: {
+    type: (parent: { type: string }) => parent.type.toUpperCase(),
+    status: (parent: { status: string }) => parent.status.toUpperCase(),
+    createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
+  },
+
   Mutation: {
     markNotificationAsRead: (
       _: unknown,
