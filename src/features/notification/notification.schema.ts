@@ -27,6 +27,7 @@ export const notificationTypeDefs = `
   type NotificationConnection {
     nodes: [Notification!]!
     totalCount: Int!
+    unreadCount: Int!
   }
 
   extend type Query {
