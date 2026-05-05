@@ -20,6 +20,7 @@ export const notificationTypeDefs = `
     status: NotificationStatus!
     title: String!
     message: String!
+    data: String
     isRead: Boolean!
     createdAt: String!
   }

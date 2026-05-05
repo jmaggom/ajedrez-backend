@@ -25,6 +25,8 @@ export const notificationResolvers = {
   Notification: {
     type: (parent: { type: string }) => parent.type.toUpperCase(),
     status: (parent: { status: string }) => parent.status.toUpperCase(),
+    data: (parent: { dataJson?: unknown }) =>
+      parent.dataJson ? JSON.stringify(parent.dataJson) : null,
     createdAt: (parent: { createdAt: Date }) => parent.createdAt.toISOString(),
   },
 
