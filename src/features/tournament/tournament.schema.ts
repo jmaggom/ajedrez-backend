@@ -15,7 +15,6 @@ export const tournamentTypeDefs = `
   enum RegistrationStatus {
     CONFIRMED
     PENDING
-    WAITLIST
     CANCELLED
     AWAITING_PAYMENT
   }
@@ -84,7 +83,6 @@ export const tournamentTypeDefs = `
     paymentStatus: PaymentStatus!
     method: RegistrationMethod!
     registeredAt: String!
-    waitlistPosition: Int
   }
 
   type TournamentConnection {
@@ -95,7 +93,6 @@ export const tournamentTypeDefs = `
 
   type RegistrationResult {
     registration: Registration!
-    waitlistPosition: Int
   }
 
   type DeleteTournamentResult {
@@ -187,6 +184,14 @@ export const tournamentTypeDefs = `
     blackPlayerId: ID!
   }
 
+  type NotifyRequestStatus {
+    isRequested: Boolean!
+  }
+
+  extend type Query {
+    myNotifyRequest(tournamentId: ID!): NotifyRequestStatus!
+  }
+
   extend type Mutation {
     createTournament(input: CreateTournamentInput!): Tournament!
     updateTournament(id: ID!, input: UpdateTournamentInput!): Tournament!
@@ -195,5 +200,7 @@ export const tournamentTypeDefs = `
     cancelRegistration(registrationId: ID!): Boolean!
     generatePairings(tournamentId: ID!, roundNumber: Int!): [PairingGame!]!
     closeTournament(tournamentId: ID!): Tournament!
+    requestTournamentNotification(tournamentId: ID!): NotifyRequestStatus!
+    cancelTournamentNotification(tournamentId: ID!): NotifyRequestStatus!
   }
 `;
