@@ -6,12 +6,13 @@ export const getMyNotifications = async (
   userId: number,
   limit: number,
   offset: number,
-): Promise<{ nodes: Notification[]; totalCount: number }> => {
-  const [nodes, totalCount] = await Promise.all([
+): Promise<{ nodes: Notification[]; totalCount: number; unreadCount: number }> => {
+  const [nodes, totalCount, unreadCount] = await Promise.all([
     notificationModel.findUserNotifications(userId, limit, offset),
     notificationModel.countUserNotifications(userId),
+    notificationModel.countUnreadUserNotifications(userId),
   ]);
-  return { nodes, totalCount };
+  return { nodes, totalCount, unreadCount };
 };
 
 export const markAsRead = async (
