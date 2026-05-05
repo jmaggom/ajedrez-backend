@@ -18,6 +18,10 @@ export const countUserNotifications = async (userId: number): Promise<number> =>
   return prisma.notification.count({ where: { userId } });
 };
 
+export const countUnreadUserNotifications = async (userId: number): Promise<number> => {
+  return prisma.notification.count({ where: { userId, isRead: false } });
+};
+
 export const markNotificationAsRead = async (
   notificationId: number,
   userId: number,
