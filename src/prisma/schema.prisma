@@ -84,6 +84,7 @@ enum GameResult {
   white_wins
   black_wins
   draw
+  bye
 }
 
 // ─── MODELOS ──────────────────────────────────────────────────────
@@ -130,6 +131,7 @@ model Player {
   registrations     Registration[]
   gamesAsWhite      Game[]         @relation("JugadorBlanco")
   gamesAsBlack      Game[]         @relation("JugadorNegro")
+  gamesAsBye        Game[]         @relation("JugadorBye")
   eloHistory        EloHistory[]
   licenses          License[]
   tournamentResults TournamentResult[]
@@ -173,6 +175,7 @@ model Tournament {
   endDate           DateTime
   format            String
   rounds            Int
+  currentRound      Int              @default(0)
   timeControl       String
   mode              String    @default("classical")
   availableSlots    Int
@@ -226,22 +229,26 @@ model PaymentReceipt {
 }
 
 model Game {
-  id                Int      @id @default(autoincrement())
+  id                Int         @id @default(autoincrement())
   tournamentId      Int
   roundNumber       Int
-  whitePlayerId     Int
-  blackPlayerId     Int
+  tableNumber       Int?
+  isBye             Boolean     @default(false)
+  whitePlayerId     Int?
+  blackPlayerId     Int?
+  byePlayerId       Int?
   result            GameResult?
   moves             String?
   notes             String?
   durationSeconds   Int?
-  eloEligible       Boolean    @default(false)
+  eloEligible       Boolean     @default(false)
   registeredById    Int?
 
-  tournament        Tournament @relation(fields: [tournamentId], references: [id])
-  whitePlayer       Player     @relation("JugadorBlanco", fields: [whitePlayerId], references: [id])
-  blackPlayer       Player     @relation("JugadorNegro", fields: [blackPlayerId], references: [id])
-  registeredBy      User?      @relation("GameRegisteredBy", fields: [registeredById], references: [id])
+  tournament        Tournament  @relation(fields: [tournamentId], references: [id])
+  whitePlayer       Player?     @relation("JugadorBlanco", fields: [whitePlayerId], references: [id])
+  blackPlayer       Player?     @relation("JugadorNegro", fields: [blackPlayerId], references: [id])
+  byePlayer         Player?     @relation("JugadorBye", fields: [byePlayerId], references: [id])
+  registeredBy      User?       @relation("GameRegisteredBy", fields: [registeredById], references: [id])
 }
 
 model EloHistory {
