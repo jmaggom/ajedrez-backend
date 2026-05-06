@@ -63,6 +63,7 @@ export const tournamentTypeDefs = `
     endDate: String!
     format: String!
     rounds: Int!
+    currentRound: Int!
     timeControl: String!
     mode: TournamentMode!
     availableSlots: Int!
@@ -73,6 +74,7 @@ export const tournamentTypeDefs = `
     requirements: TournamentRequirements!
     organizer: Club!
     registrations: [Registration!]!
+    standings: TournamentStandings!
   }
 
   type Registration {
@@ -164,6 +166,7 @@ export const tournamentTypeDefs = `
 
   input TournamentFiltersInput {
     status: TournamentStatus
+    statuses: [TournamentStatus!]
     mode: TournamentMode
     name: String
     dateFrom: String
@@ -175,13 +178,6 @@ export const tournamentTypeDefs = `
     tournaments(filters: TournamentFiltersInput, page: Int, limit: Int): TournamentConnection!
     tournament(id: ID!): Tournament
     nearbyTournaments(lat: Float!, lng: Float!, radiusKm: Int!): [Tournament!]!
-  }
-
-  type PairingGame {
-    id: ID!
-    roundNumber: Int!
-    whitePlayerId: ID!
-    blackPlayerId: ID!
   }
 
   type NotifyRequestStatus {
@@ -198,8 +194,6 @@ export const tournamentTypeDefs = `
     deleteTournament(id: ID!): DeleteTournamentResult!
     registerTournament(tournamentId: ID!): RegistrationResult!
     cancelRegistration(registrationId: ID!): Boolean!
-    generatePairings(tournamentId: ID!, roundNumber: Int!): [PairingGame!]!
-    closeTournament(tournamentId: ID!): Tournament!
     requestTournamentNotification(tournamentId: ID!): NotifyRequestStatus!
     cancelTournamentNotification(tournamentId: ID!): NotifyRequestStatus!
   }
