@@ -3,7 +3,6 @@ import { LicenseStatus, LicenseType, Role, RegistrationStatus, TournamentStatus 
 import * as tournamentModel from './tournament.model';
 import { NotificationType } from '@prisma/client';
 import { sendPushNotification, sendBatchPushNotifications } from '../../common/notification/notification.service';
-import { FREEMIUM_MAX_ACTIVE_TOURNAMENTS } from './constants';
 import type {
   CreateTournamentInput,
   DeleteTournamentResult,
@@ -227,22 +226,9 @@ export const registerTournament = async (
     return { registration };
   }
 
-  const registration = await tournamentModel.createRegistration(
-    player.id,
-    tournamentId,
-    RegistrationStatus.waitlist,
-  );
-  const waitlistPosition = await tournamentModel.countWaitlistRegistrations(tournamentId);
-  try {
-    await sendPushNotification({
-      userId,
-      type: NotificationType.registration,
-      title: 'En lista de espera',
-      message: `Estás en la lista de espera para ${tournament.name}. Tu posición es #${waitlistPosition}.`,
-      data: { tournamentId: String(tournamentId) },
-    });
-  } catch { /* notification failure must not break registration */ }
-  return { registration, waitlistPosition };
+  throw new GraphQLError('Tournament is full', {
+    extensions: { code: 'TOURNAMENT_FULL' },
+  });
 };
 
 export const getNearbyTournaments = async (
@@ -279,20 +265,19 @@ export const cancelRegistration = async (
 
   await tournamentModel.updateRegistrationStatus(registrationId, RegistrationStatus.cancelled);
 
-  const nextInWaitlist = await tournamentModel.findFirstWaitlistRegistrationWithPlayer(
-    registration.tournamentId,
-  );
-  if (nextInWaitlist) {
-    await tournamentModel.updateRegistrationStatus(nextInWaitlist.id, RegistrationStatus.pending);
-    try {
-      await sendPushNotification({
-        userId: nextInWaitlist.player.userId,
-        type: NotificationType.registration,
-        title: '¡Plaza disponible!',
-        message: `Se liberó un lugar en ${registration.tournament.name}. Tu inscripción pasó a pendiente de confirmación.`,
-        data: { tournamentId: String(registration.tournamentId) },
-      });
-    } catch { /* notification failure must not break cancellation */ }
+  const notifyRequests = await tournamentModel.findNotifyRequests(registration.tournamentId);
+  if (notifyRequests.length > 0) {
+    await Promise.allSettled(
+      notifyRequests.map((req) =>
+        sendPushNotification({
+          userId: req.userId,
+          type: NotificationType.tournament,
+          title: 'Plaza disponible',
+          message: `Se ha liberado una plaza en ${registration.tournament.name}`,
+          data: { tournamentId: String(registration.tournamentId) },
+        }),
+      ),
+    );
   }
 
   return true;
@@ -343,4 +328,38 @@ export const closeTournament = async (
 
   const closedTournament = await tournamentModel.closeTournamentById(tournamentId);
   return tournamentModel.findTournamentById(closedTournament.id) as Promise<TournamentWithRelations>;
+};
+
+export const getMyNotifyRequest = async (
+  tournamentId: number,
+  userId: number,
+): Promise<{ isRequested: boolean }> => {
+  const request = await tournamentModel.findNotifyRequest(userId, tournamentId);
+  return { isRequested: request !== null };
+};
+
+export const requestTournamentNotification = async (
+  tournamentId: number,
+  userId: number,
+): Promise<{ isRequested: boolean }> => {
+  const tournament = await tournamentModel.findTournamentById(tournamentId);
+  if (!tournament)
+    throw new GraphQLError('Tournament not found', { extensions: { code: 'NOT_FOUND' } });
+
+  const activeCount = await tournamentModel.countActiveRegistrations(tournamentId);
+  if (activeCount < tournament.availableSlots)
+    throw new GraphQLError('Hay plazas disponibles, inscríbete directamente', {
+      extensions: { code: 'BAD_USER_INPUT' },
+    });
+
+  await tournamentModel.createNotifyRequest(userId, tournamentId);
+  return { isRequested: true };
+};
+
+export const cancelTournamentNotification = async (
+  tournamentId: number,
+  userId: number,
+): Promise<{ isRequested: boolean }> => {
+  await tournamentModel.deleteNotifyRequest(userId, tournamentId);
+  return { isRequested: false };
 };

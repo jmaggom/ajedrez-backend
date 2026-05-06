@@ -1,4 +1,4 @@
-import { GameResult } from '@prisma/client'
+import { GameResult, Role } from '@prisma/client'
 import * as gameService from '../../game.service'
 import * as gameModel from '../../game.model'
 import { GameResultInput } from '../../game.types'
@@ -31,7 +31,7 @@ const mockDelegate = { id: 2, role: 'delegate', clubId: 1 }
 const mockDelegateOtherClub = { id: 3, role: 'delegate', clubId: 99 }
 const mockPlayer = { id: 4, role: 'player', clubId: null }
 
-const mockGameBase = {
+const mockGame: GameWithRelations = {
   id: 1,
   tournamentId: 1,
   roundNumber: 1,
@@ -45,24 +45,53 @@ const mockGameBase = {
   registeredById: null,
   whitePlayer: {
     id: 1,
+    userId: 10,
+    birthDate: new Date('2000-01-01'),
+    NIF: '12345678A',
+    fideId: null,
+    federation: null,
+    clubId: null,
+    eloId: 1,
+    joinedAt: new Date('2025-01-01'),
+    leftAt: null,
+    lastLatitude: null,
+    lastLongitude: null,
+    lastLocationAt: null,
     user: { fullName: 'Jugador Blancas' },
-    elo: { fideClassical: 1800, fadaClassical: 1750 },
+    elo: {
+      fadaClassical: 1750,
+      fideClassical: 1800,
+    },
   },
   blackPlayer: {
     id: 2,
+    userId: 20,
+    birthDate: new Date('2000-02-01'),
+    NIF: '87654321B',
+    fideId: null,
+    federation: null,
+    clubId: null,
+    eloId: 2,
+    joinedAt: new Date('2025-01-01'),
+    leftAt: null,
+    lastLatitude: null,
+    lastLongitude: null,
+    lastLocationAt: null,
     user: { fullName: 'Jugador Negras' },
-    elo: { fideClassical: 1700, fadaClassical: 1680 },
+    elo: {
+      fadaClassical: 1680,
+      fideClassical: 1700,
+    },
   },
   registeredBy: null,
 }
 
-const mockGame = mockGameBase as unknown as GameWithRelations
-const mockGameWithResult = {
-  ...mockGameBase,
+const mockGameWithResult: GameWithRelations = {
+  ...mockGame,
   result: GameResult.white_wins,
-} as unknown as GameWithRelations
+}
 
-const mockTournamentResult = {
+const mockTournamentResult: TournamentResultWithRelations = {
   id: 1,
   playerId: 1,
   tournamentId: 1,
@@ -83,11 +112,25 @@ const mockTournamentResult = {
   eloChangeOnline: null,
   player: {
     id: 1,
+    userId: 10,
+    birthDate: new Date('2000-01-01'),
+    NIF: '12345678A',
     fideId: null,
+    federation: null,
+    clubId: null,
+    eloId: 1,
+    joinedAt: new Date('2025-01-01'),
+    leftAt: null,
+    lastLatitude: null,
+    lastLongitude: null,
+    lastLocationAt: null,
     user: { fullName: 'Jugador Blancas' },
-    elo: { fideClassical: 1800, fadaClassical: 1750 },
+    elo: {
+      fadaClassical: 1750,
+      fideClassical: 1800,
+    },
   },
-} as unknown as TournamentResultWithRelations
+}
 
 // ── getTournamentGames ────────────────────────────────────────────────────────
 

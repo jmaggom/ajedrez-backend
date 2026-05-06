@@ -63,7 +63,6 @@ export type TournamentFiltersInput = {
 
 export type RegistrationResult = {
   registration: Registration;
-  waitlistPosition?: number;
 };
 
 export type DeleteTournamentResult = {

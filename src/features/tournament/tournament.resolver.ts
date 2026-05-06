@@ -42,6 +42,16 @@ export const tournamentResolvers = {
       { lat, lng, radiusKm }: { lat: number; lng: number; radiusKm: number },
       _ctx: Context,
     ) => tournamentService.getNearbyTournaments(lat, lng, radiusKm),
+
+    myNotifyRequest: (
+      _: unknown,
+      { tournamentId }: { tournamentId: string },
+      context: Context,
+    ) => {
+      if (!context.user)
+        throw new GraphQLError('Unauthorized', { extensions: { code: 'UNAUTHORIZED' } });
+      return tournamentService.getMyNotifyRequest(Number(tournamentId), context.user.id);
+    },
   },
 
   Mutation: {
@@ -113,6 +123,26 @@ export const tournamentResolvers = {
       if (!context.user)
         throw new GraphQLError('Unauthenticated', { extensions: { code: 'UNAUTHENTICATED' } });
       return tournamentService.closeTournament(Number(tournamentId), context.user.id);
+    },
+
+    requestTournamentNotification: (
+      _: unknown,
+      { tournamentId }: { tournamentId: string },
+      context: Context,
+    ) => {
+      if (!context.user)
+        throw new GraphQLError('Unauthorized', { extensions: { code: 'UNAUTHORIZED' } });
+      return tournamentService.requestTournamentNotification(Number(tournamentId), context.user.id);
+    },
+
+    cancelTournamentNotification: (
+      _: unknown,
+      { tournamentId }: { tournamentId: string },
+      context: Context,
+    ) => {
+      if (!context.user)
+        throw new GraphQLError('Unauthorized', { extensions: { code: 'UNAUTHORIZED' } });
+      return tournamentService.cancelTournamentNotification(Number(tournamentId), context.user.id);
     },
   },
 };

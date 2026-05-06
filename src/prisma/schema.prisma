@@ -25,7 +25,6 @@ enum Role {
 enum RegistrationStatus {
   confirmed
   pending
-  waitlist
   cancelled
   awaiting_payment
 }
@@ -107,6 +106,7 @@ model User {
   gamesRegistered      Game[]           @relation("GameRegisteredBy")
   paymentsValidated    PaymentReceipt[] @relation("PaymentValidatedBy")
   registrationsMade    Registration[]   @relation("RegistrationRegisteredBy")
+  notifyRequests       TournamentNotifyRequest[]
 }
 
 model Player {
@@ -190,6 +190,7 @@ model Tournament {
   registrations     Registration[]
   games             Game[]
   results           TournamentResult[]
+  notifyRequests    TournamentNotifyRequest[]
 }
 
 model Registration {
@@ -351,4 +352,16 @@ model Notification {
   user           User                 @relation(fields: [userId], references: [id])
 
   @@index([userId, createdAt(sort: Desc)])
+}
+
+model TournamentNotifyRequest {
+  id           Int        @id @default(autoincrement())
+  userId       Int
+  tournamentId Int
+  createdAt    DateTime   @default(now())
+
+  user         User       @relation(fields: [userId], references: [id])
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+
+  @@unique([userId, tournamentId])
 }

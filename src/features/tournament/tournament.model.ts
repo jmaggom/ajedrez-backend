@@ -122,16 +122,11 @@ export const countActiveRegistrations = async (tournamentId: number): Promise<nu
   return prisma.registration.count({
     where: {
       tournamentId,
-      status: { not: RegistrationStatus.cancelled },
+      status: { in: [RegistrationStatus.confirmed, RegistrationStatus.pending, RegistrationStatus.awaiting_payment] },
     },
   });
 };
 
-export const countWaitlistRegistrations = async (tournamentId: number): Promise<number> => {
-  return prisma.registration.count({
-    where: { tournamentId, status: RegistrationStatus.waitlist },
-  });
-};
 
 export const createRegistration = async (
   playerId: number,
@@ -161,24 +156,6 @@ export const updateRegistrationStatus = async (
   });
 };
 
-export const findFirstWaitlistRegistration = async (
-  tournamentId: number,
-): Promise<Registration | null> => {
-  return prisma.registration.findFirst({
-    where: { tournamentId, status: RegistrationStatus.waitlist },
-    orderBy: { registeredAt: 'asc' },
-  });
-};
-
-export const findFirstWaitlistRegistrationWithPlayer = async (
-  tournamentId: number,
-): Promise<(Registration & { player: { userId: number } }) | null> => {
-  return prisma.registration.findFirst({
-    where: { tournamentId, status: RegistrationStatus.waitlist },
-    orderBy: { registeredAt: 'asc' },
-    include: { player: { select: { userId: true } } },
-  });
-};
 
 export const createTournament = async (
   organizerId: number,
@@ -365,5 +342,45 @@ export const closeTournamentById = async (tournamentId: number): Promise<Tournam
   return prisma.tournament.update({
     where: { id: tournamentId },
     data: { status: TournamentStatus.finished },
+  });
+};
+
+export const findNotifyRequests = async (
+  tournamentId: number,
+): Promise<Array<{ userId: number }>> => {
+  return prisma.tournamentNotifyRequest.findMany({
+    where: { tournamentId },
+    select: { userId: true },
+  });
+};
+
+export const createNotifyRequest = async (
+  userId: number,
+  tournamentId: number,
+): Promise<{ userId: number; tournamentId: number }> => {
+  return prisma.tournamentNotifyRequest.upsert({
+    where: { userId_tournamentId: { userId, tournamentId } },
+    create: { userId, tournamentId },
+    update: {},
+    select: { userId: true, tournamentId: true },
+  });
+};
+
+export const deleteNotifyRequest = async (
+  userId: number,
+  tournamentId: number,
+): Promise<void> => {
+  await prisma.tournamentNotifyRequest.deleteMany({
+    where: { userId, tournamentId },
+  });
+};
+
+export const findNotifyRequest = async (
+  userId: number,
+  tournamentId: number,
+): Promise<{ userId: number; tournamentId: number } | null> => {
+  return prisma.tournamentNotifyRequest.findUnique({
+    where: { userId_tournamentId: { userId, tournamentId } },
+    select: { userId: true, tournamentId: true },
   });
 };

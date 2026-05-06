@@ -1,6 +1,7 @@
 import { GraphQLError } from 'graphql';
-import { NotificationType, PaymentStatus } from '@prisma/client';
+import { NotificationType, PaymentStatus, RegistrationStatus } from '@prisma/client';
 import * as clubModel from './club.model';
+import * as tournamentModel from '../tournament/tournament.model';
 import { sendPushNotification } from '../../common/notification/notification.service';
 import {
   getAvatarUploadUrl,
@@ -137,6 +138,13 @@ export const validatePayment = async (
 
   const updatedReceipt = await clubModel.updatePaymentStatus(paymentReceiptId, 'validated', userId, new Date());
 
+  const registrationId = receipt.registration?.id;
+  if (registrationId)
+    await clubModel.updateRegistrationPayment(registrationId, {
+      status: RegistrationStatus.confirmed,
+      paymentStatus: PaymentStatus.validated,
+    });
+
   const playerUserId = receipt.registration?.player.user.id;
   const tournamentId = receipt.registration?.tournament.id;
   const tournamentName = receipt.registration?.tournament.name;
@@ -182,6 +190,13 @@ export const rejectPayment = async (
 
   const updatedReceipt = await clubModel.updatePaymentStatus(paymentReceiptId, 'rejected', userId, new Date());
 
+  const registrationId = receipt.registration?.id;
+  if (registrationId)
+    await clubModel.updateRegistrationPayment(registrationId, {
+      status: RegistrationStatus.cancelled,
+      paymentStatus: PaymentStatus.rejected,
+    });
+
   const playerUserId = receipt.registration?.player.user.id;
   const tournamentId = receipt.registration?.tournament.id;
   const tournamentName = receipt.registration?.tournament.name;
@@ -200,6 +215,23 @@ export const rejectPayment = async (
       });
     } catch (notifError) {
       console.error('Push notification failed:', notifError);
+    }
+  }
+
+  if (tournamentId) {
+    const notifyRequests = await tournamentModel.findNotifyRequests(tournamentId);
+    if (notifyRequests.length > 0) {
+      await Promise.allSettled(
+        notifyRequests.map((req) =>
+          sendPushNotification({
+            userId: req.userId,
+            type: NotificationType.tournament,
+            title: 'Plaza disponible',
+            message: `Se ha liberado una plaza en ${tournamentName}`,
+            data: { tournamentId: String(tournamentId) },
+          }),
+        ),
+      );
     }
   }
 
