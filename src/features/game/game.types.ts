@@ -23,8 +23,11 @@ export const gameSelect = {
   id: true,
   tournamentId: true,
   roundNumber: true,
+  tableNumber: true,
+  isBye: true,
   whitePlayerId: true,
   blackPlayerId: true,
+  byePlayerId: true,
   result: true,
   moves: true,
   notes: true,
@@ -38,6 +41,12 @@ export const gameSelect = {
     },
   },
   blackPlayer: {
+    include: {
+      user: { select: { fullName: true } },
+      elo: { select: { fideClassical: true, fadaClassical: true } },
+    },
+  },
+  byePlayer: {
     include: {
       user: { select: { fullName: true } },
       elo: { select: { fideClassical: true, fadaClassical: true } },
@@ -94,3 +103,69 @@ export type PlayerStats = {
   drawsAsBlack: number;
   lossesAsBlack: number;
 };
+
+// ── Tipos para emparejamientos ──────────────────────────────────────────────
+
+export type RoundStatus = 'PENDING_PAIRINGS' | 'PAIRINGS_PUBLISHED' | 'RESULTS_COMPLETE';
+
+export type RoundPairingPlayer = {
+  id: string;
+  fullName: string;
+  fideId: string | null;
+  elo: { fideClassical: number; fadaClassical: number } | null;
+};
+
+export type RoundPairing = {
+  gameId: string;
+  roundNumber: number;
+  tableNumber: number;
+  isBye: boolean;
+  result: string | null;
+  whitePlayer: RoundPairingPlayer | null;
+  blackPlayer: RoundPairingPlayer | null;
+  byePlayer: RoundPairingPlayer | null;
+};
+
+export type RoundSummary = {
+  roundNumber: number;
+  status: RoundStatus;
+  pairings: RoundPairing[];
+};
+
+export type PublishPairingsPayload = {
+  roundNumber: number;
+  pairings: RoundPairing[];
+};
+
+// ── Tipos para el algoritmo de emparejamiento ───────────────────────────────
+
+export type PairingPlayerInput = {
+  playerId: number;
+  fideClassical: number;
+  points: number;
+};
+
+export type HistoricalMatchup = {
+  playerAId: number;
+  playerBId: number;
+};
+
+export type ColorHistory = {
+  whites: number;
+  blacks: number;
+};
+
+export type NormalPairing = {
+  whitePlayerId: number;
+  blackPlayerId: number;
+  tableNumber: number;
+  isBye: false;
+};
+
+export type ByePairing = {
+  byePlayerId: number;
+  tableNumber: number;
+  isBye: true;
+};
+
+export type Pairing = NormalPairing | ByePairing;
