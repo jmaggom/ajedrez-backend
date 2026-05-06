@@ -24,6 +24,8 @@ export const resolvers = {
         ...paymentResolvers.Mutation,
         ...notificationResolvers.Mutation,
     },
+    Game: gameResolvers.Game,
+    GamePlayer: gameResolvers.GamePlayer,
     Tournament: tournamentResolvers.Tournament,
     Registration: tournamentResolvers.Registration,
     PlayerProfile: tournamentResolvers.PlayerProfile,
