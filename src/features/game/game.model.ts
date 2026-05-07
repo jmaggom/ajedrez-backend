@@ -1,5 +1,5 @@
 import { prisma } from '../../config/database';
-import { GameResult, RegistrationStatus } from '@prisma/client';
+import { GameResult, RegistrationStatus, TournamentStatus } from '@prisma/client';
 import {
   gameSelect,
   tournamentResultSelect,
@@ -7,32 +7,64 @@ import {
   type TournamentResultWithRelations,
 } from './game.types';
 
-export const findGameById = async (id: number): Promise<GameWithRelations | null> => {
-  return prisma.game.findUnique({ where: { id }, select: gameSelect });
-};
+// ── Torneos ───────────────────────────────────────────────────────────────────
 
-export const findGamesByTournament = async (
-  tournamentId: number,
-  roundNumber?: number,
-): Promise<GameWithRelations[]> => {
-  return prisma.game.findMany({
-    where: {
-      tournamentId,
-      ...(roundNumber !== undefined && { roundNumber }),
-    },
-    select: gameSelect,
-    orderBy: { roundNumber: 'asc' },
-  });
-};
-
-export const findTournamentById = async (
-  id: number,
-): Promise<{ id: number; name: string; eloEligible: boolean; organizerId: number; status: string } | null> => {
+export const findTournamentById = async (id: number) => {
   return prisma.tournament.findUnique({
     where: { id },
-    select: { id: true, name: true, eloEligible: true, organizerId: true, status: true },
+    select: {
+      id: true,
+      name: true,
+      eloEligible: true,
+      organizerId: true,
+      status: true,
+      rounds: true,
+      currentRound: true,
+    },
   });
 };
+
+export const updateTournamentCurrentRound = async (
+  tournamentId: number,
+  currentRound: number,
+): Promise<void> => {
+  await prisma.tournament.update({
+    where: { id: tournamentId },
+    data: { currentRound },
+  });
+};
+
+export const closeTournamentInDb = async (tournamentId: number) => {
+  return prisma.tournament.update({
+    where: { id: tournamentId },
+    data: { status: TournamentStatus.finished },
+    select: {
+      id: true,
+      name: true,
+      status: true,
+      rounds: true,
+      currentRound: true,
+      startDate: true,
+      endDate: true,
+      venue: true,
+      organizerId: true,
+      eloEligible: true,
+      mode: true,
+      timeControl: true,
+      availableSlots: true,
+      registrationFee: true,
+      description: true,
+      format: true,
+      requirements: true,
+      latitude: true,
+      longitude: true,
+      notificationRadius: true,
+      geoNotificationActive: true,
+    },
+  });
+};
+
+// ── Usuarios ──────────────────────────────────────────────────────────────────
 
 export const findUserById = async (
   id: number,
@@ -54,14 +86,52 @@ export const findUserById = async (
   };
 };
 
+// ── Partidas ──────────────────────────────────────────────────────────────────
+
+export const findGameById = async (id: number): Promise<GameWithRelations | null> => {
+  return prisma.game.findUnique({ where: { id }, select: gameSelect });
+};
+
+export const findGamesByTournament = async (
+  tournamentId: number,
+  roundNumber?: number,
+): Promise<GameWithRelations[]> => {
+  return prisma.game.findMany({
+    where: {
+      tournamentId,
+      ...(roundNumber !== undefined && { roundNumber }),
+    },
+    select: gameSelect,
+    orderBy: { roundNumber: 'asc' },
+  });
+};
+
 export const createGame = async (data: {
   tournamentId: number;
   roundNumber: number;
   whitePlayerId: number;
   blackPlayerId: number;
+  tableNumber?: number;
   eloEligible: boolean;
 }): Promise<GameWithRelations> => {
   const game = await prisma.game.create({ data });
+  return prisma.game.findUniqueOrThrow({ where: { id: game.id }, select: gameSelect });
+};
+
+export const createByeGame = async (data: {
+  tournamentId: number;
+  roundNumber: number;
+  byePlayerId: number;
+  tableNumber: number;
+}): Promise<GameWithRelations> => {
+  const game = await prisma.game.create({
+    data: {
+      ...data,
+      isBye: true,
+      result: GameResult.bye,
+      eloEligible: false,
+    },
+  });
   return prisma.game.findUniqueOrThrow({ where: { id: game.id }, select: gameSelect });
 };
 
@@ -76,6 +146,62 @@ export const updateGameResult = async (
   });
   return prisma.game.findUniqueOrThrow({ where: { id: gameId }, select: gameSelect });
 };
+
+export const countPendingResultsInRound = async (
+  tournamentId: number,
+  roundNumber: number,
+): Promise<number> => {
+  return prisma.game.count({
+    where: {
+      tournamentId,
+      roundNumber,
+      result: null,
+      isBye: false,
+    },
+  });
+};
+
+// ── Jugadores para emparejamiento ─────────────────────────────────────────────
+
+export const findConfirmedPlayersWithElo = async (
+  tournamentId: number,
+): Promise<
+  Array<{
+    playerId: number;
+    userId: number;
+    fideClassical: number;
+    fideId: string | null;
+    fullName: string;
+  }>
+> => {
+  const registrations = await prisma.registration.findMany({
+    where: {
+      tournamentId,
+      status: { in: [RegistrationStatus.confirmed, RegistrationStatus.pending] },
+    },
+    select: {
+      player: {
+        select: {
+          id: true,
+          userId: true,
+          fideId: true,
+          elo: { select: { fideClassical: true } },
+          user: { select: { fullName: true } },
+        },
+      },
+    },
+  });
+
+  return registrations.map(({ player }) => ({
+    playerId: player.id,
+    userId: player.userId,
+    fideClassical: player.elo.fideClassical,
+    fideId: player.fideId,
+    fullName: player.user.fullName,
+  }));
+};
+
+// ── Resultados ────────────────────────────────────────────────────────────────
 
 export const findTournamentResults = async (
   tournamentId: number,
@@ -110,6 +236,20 @@ export const upsertTournamentResult = async (data: {
   });
 };
 
+export const updateFinalPositions = async (
+  tournamentId: number,
+  orderedPlayerIds: number[],
+): Promise<void> => {
+  await prisma.$transaction(
+    orderedPlayerIds.map((playerId, index) =>
+      prisma.tournamentResult.update({
+        where: { playerId_tournamentId: { playerId, tournamentId } },
+        data: { finalPosition: index + 1 },
+      }),
+    ),
+  );
+};
+
 export const findConfirmedRegistrationsByTournament = async (
   tournamentId: number,
 ): Promise<{ player: { userId: number } }[]> => {
@@ -124,18 +264,4 @@ export const findConfirmedRegistrationsByTournament = async (
       },
     },
   });
-};
-
-export const updateFinalPositions = async (
-  tournamentId: number,
-  orderedPlayerIds: number[],
-): Promise<void> => {
-  await prisma.$transaction(
-    orderedPlayerIds.map((playerId, index) =>
-      prisma.tournamentResult.update({
-        where: { playerId_tournamentId: { playerId, tournamentId } },
-        data: { finalPosition: index + 1 },
-      }),
-    ),
-  );
 };

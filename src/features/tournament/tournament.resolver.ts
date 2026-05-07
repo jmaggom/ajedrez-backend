@@ -1,6 +1,7 @@
 import { GraphQLError } from 'graphql';
 import type { Context } from '../../common/context.types';
 import * as tournamentService from './tournament.service';
+import * as gameService from '../game/game.service';
 import type {
   CreateTournamentInput,
   TournamentFiltersInput,
@@ -16,6 +17,7 @@ export const tournamentResolvers = {
       requireFadaId: parent.requirements?.requireFadaId ?? false,
       eloFilter: parent.requirements?.eloFilter ?? null,
     }),
+    standings: (parent: { id: number }) => gameService.getTournamentStandings(parent.id),
   },
   PlayerProfile: {
     name: (parent: { user?: { fullName: string } }) => parent.user?.fullName ?? null,
@@ -103,26 +105,6 @@ export const tournamentResolvers = {
       if (!context.user)
         throw new GraphQLError('Unauthenticated', { extensions: { code: 'UNAUTHENTICATED' } });
       return tournamentService.cancelRegistration(Number(registrationId), context.user.id);
-    },
-
-    generatePairings: (
-      _: unknown,
-      { tournamentId, roundNumber }: { tournamentId: string; roundNumber: number },
-      context: Context,
-    ) => {
-      if (!context.user)
-        throw new GraphQLError('Unauthenticated', { extensions: { code: 'UNAUTHENTICATED' } });
-      return tournamentService.generatePairings(Number(tournamentId), roundNumber, context.user.id);
-    },
-
-    closeTournament: (
-      _: unknown,
-      { tournamentId }: { tournamentId: string },
-      context: Context,
-    ) => {
-      if (!context.user)
-        throw new GraphQLError('Unauthenticated', { extensions: { code: 'UNAUTHENTICATED' } });
-      return tournamentService.closeTournament(Number(tournamentId), context.user.id);
     },
 
     requestTournamentNotification: (

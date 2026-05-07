@@ -16,6 +16,12 @@ export const gameResolvers = {
       { tournamentId }: { tournamentId: string },
       _ctx: Context,
     ) => gameService.getTournamentStandings(Number(tournamentId)),
+
+    tournamentRounds: (
+      _: unknown,
+      { tournamentId }: { tournamentId: string },
+      _ctx: Context,
+    ) => gameService.getTournamentRounds(Number(tournamentId)),
   },
 
   Mutation: {
@@ -42,5 +48,43 @@ export const gameResolvers = {
       };
       return gameService.submitGameResult(typedInput, context.user.id);
     },
+
+    publishPairings: (
+      _: unknown,
+      { tournamentId }: { tournamentId: string },
+      context: Context,
+    ) => {
+      if (!context.user)
+        throw new GraphQLError('Unauthenticated', { extensions: { code: 'UNAUTHENTICATED' } });
+      return gameService.publishPairings(Number(tournamentId), context.user.id);
+    },
+
+    closeTournament: (
+      _: unknown,
+      { tournamentId }: { tournamentId: string },
+      context: Context,
+    ) => {
+      if (!context.user)
+        throw new GraphQLError('Unauthenticated', { extensions: { code: 'UNAUTHENTICATED' } });
+      return gameService.closeTournament(Number(tournamentId), context.user.id);
+    },
+  },
+
+  Game: {
+    result: (parent: { result: string | null }) => {
+      if (!parent.result) return null;
+      const map: Record<string, string> = {
+        white_wins: 'WHITE_WINS',
+        black_wins: 'BLACK_WINS',
+        draw: 'DRAW',
+        bye: 'BYE',
+      };
+      return map[parent.result] ?? null;
+    },
+  },
+
+  GamePlayer: {
+    fullName: (parent: { user?: { fullName: string }; fullName?: string } | null) =>
+      parent?.user?.fullName ?? parent?.fullName ?? null,
   },
 };

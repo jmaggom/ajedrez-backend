@@ -52,6 +52,7 @@ export type UpdateTournamentInput = Partial<CreateTournamentInput>;
 
 export type TournamentFiltersInput = {
   status?: string;
+  statuses?: string[];
   mode?: string;
   name?: string;
   dateFrom?: string;
@@ -99,6 +100,7 @@ export const tournamentSelect = {
   endDate: true,
   format: true,
   rounds: true,
+  currentRound: true,
   timeControl: true,
   mode: true,
   availableSlots: true,

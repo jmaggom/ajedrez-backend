@@ -31,7 +31,11 @@ export const findTournaments = async (
     IN_PROGRESS: TournamentStatus.in_progress,
     FINISHED: TournamentStatus.finished,
   };
-  if (filters.status && statusMap[filters.status]) where.status = statusMap[filters.status];
+  if (filters.statuses && filters.statuses.length > 0) {
+    where.status = { in: filters.statuses.map(s => statusMap[s]).filter(Boolean) };
+  } else if (filters.status && statusMap[filters.status]) {
+    where.status = statusMap[filters.status];
+  }
 
   const modeMap: Record<string, string> = {
     CLASSICAL: 'classical',
@@ -204,6 +208,7 @@ export const updateTournament = async (
       ...(input.format !== undefined && { format: input.format }),
       ...(input.rounds !== undefined && { rounds: input.rounds }),
       ...(input.timeControl !== undefined && { timeControl: input.timeControl }),
+      ...(input.mode !== undefined && { mode: { [TournamentMode.CLASSICAL]: 'classical', [TournamentMode.RAPID]: 'rapid', [TournamentMode.BLITZ]: 'blitz' }[input.mode] ?? 'classical' }),
       ...(input.availableSlots !== undefined && { availableSlots: input.availableSlots }),
       ...(input.registrationFee !== undefined && { registrationFee: input.registrationFee }),
       ...(input.description !== undefined && { description: input.description }),
@@ -286,63 +291,6 @@ export const findConfirmedRegistrationsByTournament = async (
     select: { playerId: true },
   });
   return registrations;
-};
-
-export const findGamesByTournamentAndRound = async (
-  tournamentId: number,
-  roundNumber: number,
-) => {
-  return prisma.game.findMany({
-    where: { tournamentId, roundNumber },
-    select: { id: true },
-  });
-};
-
-export const generateRandomPairings = async (
-  tournamentId: number,
-  roundNumber: number,
-): Promise<Array<{ id: number; roundNumber: number; whitePlayerId: number; blackPlayerId: number }>> => {
-  const existingGames = await findGamesByTournamentAndRound(tournamentId, roundNumber);
-  if (existingGames.length > 0) {
-    throw new Error('Esta ronda ya tiene emparejamientos publicados');
-  }
-
-  const registrations = await findConfirmedRegistrationsByTournament(tournamentId);
-  const playerIds = registrations.map((r) => r.playerId);
-
-  // Fisher-Yates shuffle
-  for (let i = playerIds.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [playerIds[i], playerIds[j]] = [playerIds[j], playerIds[i]];
-  }
-
-  const pairings: Array<{ tournamentId: number; roundNumber: number; whitePlayerId: number; blackPlayerId: number }> = [];
-  for (let i = 0; i + 1 < playerIds.length; i += 2) {
-    pairings.push({
-      tournamentId,
-      roundNumber,
-      whitePlayerId: playerIds[i],
-      blackPlayerId: playerIds[i + 1],
-    });
-  }
-
-  if (pairings.length === 0) return [];
-
-  await prisma.game.createMany({ data: pairings });
-
-  const createdGames = await prisma.game.findMany({
-    where: { tournamentId, roundNumber },
-    select: { id: true, roundNumber: true, whitePlayerId: true, blackPlayerId: true },
-  });
-
-  return createdGames;
-};
-
-export const closeTournamentById = async (tournamentId: number): Promise<Tournament> => {
-  return prisma.tournament.update({
-    where: { id: tournamentId },
-    data: { status: TournamentStatus.finished },
-  });
 };
 
 export const findNotifyRequests = async (

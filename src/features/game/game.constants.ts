@@ -11,10 +11,12 @@ export const WHITE_POINTS: PointsMap = {
     [GameResult.white_wins]: 1,
     [GameResult.black_wins]: 0,
     [GameResult.draw]: 0.5,
+    [GameResult.bye]: 0,
 };
 
 export const BLACK_POINTS: PointsMap = {
     [GameResult.white_wins]: 0,
     [GameResult.black_wins]: 1,
     [GameResult.draw]: 0.5,
+    [GameResult.bye]: 0,
 };

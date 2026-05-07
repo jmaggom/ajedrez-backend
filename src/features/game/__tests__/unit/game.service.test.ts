@@ -1,4 +1,4 @@
-import { GameResult, Role } from '@prisma/client'
+import { GameResult, Role, TournamentStatus } from '@prisma/client'
 import * as gameService from '../../game.service'
 import * as gameModel from '../../game.model'
 import { GameResultInput } from '../../game.types'
@@ -18,7 +18,9 @@ const mockTournament = {
   name: 'Open Test',
   eloEligible: true,
   organizerId: 1,
-  status: 'open',
+  status: TournamentStatus.open,
+  rounds: 5,
+  currentRound: 0,
 }
 
 const mockTournamentNonElo = {
@@ -35,8 +37,11 @@ const mockGame: GameWithRelations = {
   id: 1,
   tournamentId: 1,
   roundNumber: 1,
+  tableNumber: 1,
+  isBye: false,
   whitePlayerId: 1,
   blackPlayerId: 2,
+  byePlayerId: null,
   result: null,
   moves: null,
   notes: null,
@@ -83,6 +88,7 @@ const mockGame: GameWithRelations = {
       fideClassical: 1700,
     },
   },
+  byePlayer: null,
   registeredBy: null,
 }
 
