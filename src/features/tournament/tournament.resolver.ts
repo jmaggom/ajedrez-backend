@@ -1,7 +1,6 @@
 import { GraphQLError } from 'graphql';
 import type { Context } from '../../common/context.types';
 import * as tournamentService from './tournament.service';
-import * as gameService from '../game/game.service';
 import type {
   CreateTournamentInput,
   TournamentFiltersInput,
@@ -17,7 +16,7 @@ export const tournamentResolvers = {
       requireFadaId: parent.requirements?.requireFadaId ?? false,
       eloFilter: parent.requirements?.eloFilter ?? null,
     }),
-    standings: (parent: { id: number }) => gameService.getTournamentStandings(parent.id),
+    standings: (parent: { id: number }) => tournamentService.getTournamentStandings(parent.id),
   },
   PlayerProfile: {
     name: (parent: { user?: { fullName: string } }) => parent.user?.fullName ?? null,

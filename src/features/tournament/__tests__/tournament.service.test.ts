@@ -361,3 +361,41 @@ describe('cancelRegistration', () => {
     )
   })
 })
+
+// ── requestTournamentNotification ─────────────────────────────────────────────
+
+describe('requestTournamentNotification', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it('crea notifyRequest cuando el torneo está lleno', async () => {
+    model.findTournamentById.mockResolvedValue(mockTournamentBase)
+    model.countActiveRegistrations.mockResolvedValue(10) // torneo lleno
+    model.createNotifyRequest.mockResolvedValue(undefined as never)
+
+    const result = await tournamentService.requestTournamentNotification(1, 10)
+
+    expect(result.isRequested).toBe(true)
+    expect(model.createNotifyRequest).toHaveBeenCalledWith(10, 1)
+  })
+
+  it('lanza BAD_USER_INPUT si hay plazas disponibles', async () => {
+    model.findTournamentById.mockResolvedValue(mockTournamentBase)
+    model.countActiveRegistrations.mockResolvedValue(5) // aún hay slots
+
+    await expect(tournamentService.requestTournamentNotification(1, 10)).rejects.toThrow(
+      expect.objectContaining({ extensions: { code: 'BAD_USER_INPUT' } })
+    )
+
+    expect(model.createNotifyRequest).not.toHaveBeenCalled()
+  })
+
+  it('lanza NOT_FOUND si el torneo no existe', async () => {
+    model.findTournamentById.mockResolvedValue(null)
+
+    await expect(tournamentService.requestTournamentNotification(1, 10)).rejects.toThrow(
+      expect.objectContaining({ extensions: { code: 'NOT_FOUND' } })
+    )
+  })
+})

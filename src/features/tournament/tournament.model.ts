@@ -15,6 +15,12 @@ import type {
 import { TournamentMode } from './tournament.types';
 import { tournamentSelect } from './tournament.types';
 
+const MODE_TO_DB = {
+  [TournamentMode.CLASSICAL]: 'classical',
+  [TournamentMode.RAPID]: 'rapid',
+  [TournamentMode.BLITZ]: 'blitz',
+} as const;
+
 export const findTournaments = async (
   filters: TournamentFiltersInput,
   myClubId?: number,
@@ -177,7 +183,7 @@ export const createTournament = async (
       startDate: new Date(input.startDate),
       endDate: new Date(input.endDate),
       format: input.format,
-      mode: { [TournamentMode.CLASSICAL]: 'classical', [TournamentMode.RAPID]: 'rapid', [TournamentMode.BLITZ]: 'blitz' }[input.mode] ?? 'classical',
+      mode: MODE_TO_DB[input.mode] ?? 'classical',
       rounds: input.rounds,
       timeControl: input.timeControl,
       availableSlots: input.availableSlots,
@@ -208,7 +214,7 @@ export const updateTournament = async (
       ...(input.format !== undefined && { format: input.format }),
       ...(input.rounds !== undefined && { rounds: input.rounds }),
       ...(input.timeControl !== undefined && { timeControl: input.timeControl }),
-      ...(input.mode !== undefined && { mode: { [TournamentMode.CLASSICAL]: 'classical', [TournamentMode.RAPID]: 'rapid', [TournamentMode.BLITZ]: 'blitz' }[input.mode] ?? 'classical' }),
+      ...(input.mode !== undefined && { mode: MODE_TO_DB[input.mode] ?? 'classical' }),
       ...(input.availableSlots !== undefined && { availableSlots: input.availableSlots }),
       ...(input.registrationFee !== undefined && { registrationFee: input.registrationFee }),
       ...(input.description !== undefined && { description: input.description }),
@@ -330,5 +336,35 @@ export const findNotifyRequest = async (
   return prisma.tournamentNotifyRequest.findUnique({
     where: { userId_tournamentId: { userId, tournamentId } },
     select: { userId: true, tournamentId: true },
+  });
+};
+
+export const closeTournamentInDb = async (tournamentId: number) => {
+  return prisma.tournament.update({
+    where: { id: tournamentId },
+    data: { status: TournamentStatus.finished },
+    select: {
+      id: true,
+      name: true,
+      status: true,
+      rounds: true,
+      currentRound: true,
+      startDate: true,
+      endDate: true,
+      venue: true,
+      organizerId: true,
+      eloEligible: true,
+      mode: true,
+      timeControl: true,
+      availableSlots: true,
+      registrationFee: true,
+      description: true,
+      format: true,
+      requirements: true,
+      latitude: true,
+      longitude: true,
+      notificationRadius: true,
+      geoNotificationActive: true,
+    },
   });
 };
