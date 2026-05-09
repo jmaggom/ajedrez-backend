@@ -37,7 +37,7 @@ const clubsData = [
   { name: 'Club Ajedrez Zaragoza', community: 'Aragón', shortCode: 'CAZ' },
   { name: 'Club Ajedrez Huesca', community: 'Aragón', shortCode: 'CAH' },
   { name: 'Club Ajedrez Oviedo', community: 'Asturias', shortCode: 'CAO' },
-  { name: 'Club Ajedrez Gijón', community: 'Asturias', shortCode: 'CAGi' },
+  { name: 'Club Ajedrez Gijón', community: 'Asturias', shortCode: 'CAGIJ' },
   { name: 'Club Ajedrez Palma', community: 'Baleares', shortCode: 'CAP' },
   { name: 'Club Ajedrez Las Palmas', community: 'Canarias', shortCode: 'CALP' },
   { name: 'Club Ajedrez Tenerife', community: 'Canarias', shortCode: 'CATEN' },
