@@ -1,19 +1,22 @@
 import { GraphQLError } from 'graphql';
-import { NotificationType, PaymentStatus, RegistrationStatus } from '@prisma/client';
 import * as clubModel from './club.model';
-import * as tournamentModel from '../tournament/tournament.model';
-import { sendPushNotification } from '../../common/notification/notification.service';
 import {
   getAvatarUploadUrl,
   getAvatarPublicUrl,
   deleteFile,
 } from '../../common/storage/storage.service';
-import type { ClubWithRelations, PaymentReceiptWithRelations, UpdateClubInput, ClubPlayerOutput } from './club.types';
+import type { ClubWithRelations, UpdateClubInput, ClubPlayerOutput } from './club.types';
 
 const ALLOWED_LOGO_TYPES = ['image/jpeg', 'image/jpg', 'image/png'];
 
-export const getAllClubs = async (): Promise<ClubWithRelations[]> => {
-  return clubModel.findAllClubs();
+/**
+ * Verifica que el usuario sea delegado de un club y lo retorna.
+ */
+const requireDelegateClub = async (userId: number): Promise<ClubWithRelations> => {
+  const club = await clubModel.findClubByDelegateUserId(userId);
+  if (!club)
+    throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
+  return club;
 };
 
 export const getClubs = async (params: {
@@ -60,13 +63,19 @@ export const updateClub = async (
   return clubModel.updateClub(id, input);
 };
 
+export const updateMyClub = async (
+  userId: number,
+  input: UpdateClubInput,
+): Promise<ClubWithRelations> => {
+  const club = await getMyClub(userId);
+  return updateClub(club.id, input, userId);
+};
+
 export const addPlayerToClub = async (
   playerId: number,
   userId: number,
 ): Promise<ClubWithRelations> => {
-  const club = await clubModel.findClubByDelegateUserId(userId);
-  if (!club)
-    throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
+  const club = await requireDelegateClub(userId);
 
   const player = await clubModel.findPlayerById(playerId);
   if (!player)
@@ -84,9 +93,7 @@ export const removePlayerFromClub = async (
   playerId: number,
   userId: number,
 ): Promise<ClubWithRelations> => {
-  const club = await clubModel.findClubByDelegateUserId(userId);
-  if (!club)
-    throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
+  const club = await requireDelegateClub(userId);
 
   const player = await clubModel.findPlayerById(playerId);
   if (!player)
@@ -104,9 +111,7 @@ export const getPendingPayments = async (
   page: number = 1,
   limit: number = 10,
 ) => {
-  const club = await clubModel.findClubByDelegateUserId(userId);
-  if (!club)
-    throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
+  const club = await requireDelegateClub(userId);
 
   return clubModel.findPendingPayments(
     club.id,
@@ -116,133 +121,8 @@ export const getPendingPayments = async (
   );
 };
 
-export const validatePayment = async (
-  paymentReceiptId: number,
-  userId: number,
-): Promise<PaymentReceiptWithRelations> => {
-  const club = await clubModel.findClubByDelegateUserId(userId);
-  if (!club)
-    throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
-
-  const receipt = await clubModel.findPaymentReceiptById(paymentReceiptId);
-  if (!receipt)
-    throw new GraphQLError('Payment receipt not found', { extensions: { code: 'NOT_FOUND' } });
-
-  const tournamentOrganizerId = receipt.registration?.tournament.organizerId;
-  if (tournamentOrganizerId !== club.id)
-    throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
-
-  if (receipt.status !== PaymentStatus.pending)
-    // TODO: migrar a union type ConflictError
-    throw new GraphQLError('El comprobante ya fue procesado', { extensions: { code: 'CONFLICT' } });
-
-  const updatedReceipt = await clubModel.updatePaymentStatus(paymentReceiptId, 'validated', userId, new Date());
-
-  const registrationId = receipt.registration?.id;
-  if (registrationId)
-    await clubModel.updateRegistrationPayment(registrationId, {
-      status: RegistrationStatus.confirmed,
-      paymentStatus: PaymentStatus.validated,
-    });
-
-  const playerUserId = receipt.registration?.player.user.id;
-  const tournamentId = receipt.registration?.tournament.id;
-  const tournamentName = receipt.registration?.tournament.name;
-  if (playerUserId && tournamentId) {
-    try {
-      await sendPushNotification({
-        userId: playerUserId,
-        type: NotificationType.payment,
-        title: 'Pago validado',
-        message: `Tu comprobante de pago para ${tournamentName} ha sido validado`,
-        data: {
-          paymentReceiptId: String(paymentReceiptId),
-          tournamentId: String(tournamentId),
-        },
-      });
-    } catch (notifError) {
-      console.error('Push notification failed:', notifError);
-    }
-  }
-
-  return updatedReceipt;
-};
-
-export const rejectPayment = async (
-  paymentReceiptId: number,
-  userId: number,
-  reason: string,
-): Promise<PaymentReceiptWithRelations> => {
-  const club = await clubModel.findClubByDelegateUserId(userId);
-  if (!club)
-    throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
-
-  const receipt = await clubModel.findPaymentReceiptById(paymentReceiptId);
-  if (!receipt)
-    throw new GraphQLError('Payment receipt not found', { extensions: { code: 'NOT_FOUND' } });
-
-  const tournamentOrganizerId = receipt.registration?.tournament.organizerId;
-  if (tournamentOrganizerId !== club.id)
-    throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
-
-  if (receipt.status !== PaymentStatus.pending)
-    throw new GraphQLError('El comprobante ya fue procesado', { extensions: { code: 'CONFLICT' } });
-
-  const updatedReceipt = await clubModel.updatePaymentStatus(paymentReceiptId, 'rejected', userId, new Date());
-
-  const registrationId = receipt.registration?.id;
-  if (registrationId)
-    await clubModel.updateRegistrationPayment(registrationId, {
-      status: RegistrationStatus.cancelled,
-      paymentStatus: PaymentStatus.rejected,
-    });
-
-  const playerUserId = receipt.registration?.player.user.id;
-  const tournamentId = receipt.registration?.tournament.id;
-  const tournamentName = receipt.registration?.tournament.name;
-  if (playerUserId && tournamentId) {
-    try {
-      await sendPushNotification({
-        userId: playerUserId,
-        type: NotificationType.payment,
-        title: 'Pago rechazado',
-        message: `Tu comprobante de pago para ${tournamentName} ha sido rechazado. Motivo: ${reason}`,
-        data: {
-          paymentReceiptId: String(paymentReceiptId),
-          tournamentId: String(tournamentId),
-          reason,
-        },
-      });
-    } catch (notifError) {
-      console.error('Push notification failed:', notifError);
-    }
-  }
-
-  if (tournamentId) {
-    const notifyRequests = await tournamentModel.findNotifyRequests(tournamentId);
-    if (notifyRequests.length > 0) {
-      await Promise.allSettled(
-        notifyRequests.map((req) =>
-          sendPushNotification({
-            userId: req.userId,
-            type: NotificationType.tournament,
-            title: 'Plaza disponible',
-            message: `Se ha liberado una plaza en ${tournamentName}`,
-            data: { tournamentId: String(tournamentId) },
-          }),
-        ),
-      );
-    }
-  }
-
-  return updatedReceipt;
-};
-
 export const getExpiringLicenses = async (userId: number, daysThreshold = 30) => {
-  const club = await clubModel.findClubByDelegateUserId(userId);
-  if (!club)
-    throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
-
+  const club = await requireDelegateClub(userId);
   return clubModel.findExpiringLicenses(club.id, daysThreshold);
 };
 
@@ -392,9 +272,7 @@ export const confirmClubLogoUpload = async (
 };
 
 export const getDelegateDashboard = async (userId: number) => {
-  const club = await clubModel.findClubByDelegateUserId(userId);
-  if (!club)
-    throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
+  const club = await requireDelegateClub(userId);
 
   const [pendingPaymentsCount, expiringLicenses] = await Promise.all([
     clubModel.countPendingPayments(club.id),
@@ -421,9 +299,7 @@ export const getRecentRegistrations = async (
   page: number,
   limit: number,
 ) => {
-  const club = await clubModel.findClubByDelegateUserId(userId);
-  if (!club)
-    throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
+  const club = await requireDelegateClub(userId);
 
   const { nodes, totalCount } = await clubModel.findRecentRegistrations({
     clubId: club.id,

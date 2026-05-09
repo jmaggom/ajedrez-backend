@@ -1,18 +1,38 @@
 import { PaymentStatus, RegistrationStatus, NotificationType, Role, TournamentStatus } from '@prisma/client'
+import * as paymentService from '../../payment/payment.service'
+import * as paymentModel from '../../payment/payment.model'
+import * as tournamentModel from '../../tournament/tournament.model'
 import * as clubService from '../club.service'
 import * as clubModel from '../club.model'
-import * as tournamentModel from '../../tournament/tournament.model'
 import { sendPushNotification } from '../../../common/notification/notification.service'
-import type { PaymentReceiptWithRelations, ClubWithRelations } from '../club.types'
+import type { PaymentReceiptWithRelations } from '../../payment/payment.types'
+import type { ClubWithRelations } from '../club.types'
 
-jest.mock('../club.model')
+// Mock de prisma.$transaction — inline en jest.mock para evitar hoisting issues
+const mockTxPaymentReceipt = { update: jest.fn() }
+const mockTxRegistration = { update: jest.fn() }
+const mockTx = {
+  paymentReceipt: mockTxPaymentReceipt,
+  registration: mockTxRegistration,
+}
+
+jest.mock('../../payment/payment.model')
 jest.mock('../../tournament/tournament.model')
+jest.mock('../club.model')
+jest.mock('../../../config/database', () => ({
+  prisma: {
+    $transaction: jest.fn(async (callback: (tx: typeof mockTx) => Promise<unknown>) => {
+      return callback(mockTx)
+    }),
+  },
+}))
 jest.mock('../../../common/notification/notification.service', () => ({
   sendPushNotification: jest.fn().mockResolvedValue(undefined),
 }))
 
-const clubModelMock = clubModel as jest.Mocked<typeof clubModel>
+const paymentModelMock = paymentModel as jest.Mocked<typeof paymentModel>
 const tournamentModelMock = tournamentModel as jest.Mocked<typeof tournamentModel>
+const clubModelMock = clubModel as jest.Mocked<typeof clubModel>
 const sendPushNotificationMock = sendPushNotification as jest.MockedFunction<typeof sendPushNotification>
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -57,8 +77,27 @@ const mockPaymentReceipt: PaymentReceiptWithRelations = {
   validatedAt: null,
   registration: {
     id: 100,
+    playerId: 200,
+    tournamentId: 300,
+    status: RegistrationStatus.pending,
+    paymentStatus: PaymentStatus.pending,
+    registeredAt: new Date('2026-05-01'),
+    method: 'self' as const,
+    registeredById: null,
     player: {
       id: 200,
+      userId: 500,
+      birthDate: new Date('2000-01-01'),
+      NIF: '12345678A',
+      fideId: null,
+      federation: null,
+      joinedAt: new Date('2025-01-01'),
+      leftAt: null,
+      lastLatitude: null,
+      lastLongitude: null,
+      lastLocationAt: null,
+      clubId: null,
+      eloId: 1,
       user: {
         id: 500,
         fullName: 'Jugador Test',
@@ -67,10 +106,11 @@ const mockPaymentReceipt: PaymentReceiptWithRelations = {
     tournament: {
       id: 300,
       name: 'Torneo Test',
-      startDate: new Date('2026-06-01'),
       organizerId: 1,
+      startDate: new Date('2026-06-01'),
     },
   },
+  validatedBy: null,
 }
 
 const mockPaymentReceiptAlreadyProcessed: PaymentReceiptWithRelations = {
@@ -82,8 +122,27 @@ const mockPaymentReceiptWrongClub: PaymentReceiptWithRelations = {
   ...mockPaymentReceipt,
   registration: {
     id: 100,
+    playerId: 200,
+    tournamentId: 300,
+    status: RegistrationStatus.pending,
+    paymentStatus: PaymentStatus.pending,
+    registeredAt: new Date('2026-05-01'),
+    method: 'self' as const,
+    registeredById: null,
     player: {
       id: 200,
+      userId: 500,
+      birthDate: new Date('2000-01-01'),
+      NIF: '12345678A',
+      fideId: null,
+      federation: null,
+      joinedAt: new Date('2025-01-01'),
+      leftAt: null,
+      lastLatitude: null,
+      lastLongitude: null,
+      lastLocationAt: null,
+      clubId: null,
+      eloId: 1,
       user: {
         id: 500,
         fullName: 'Jugador Test',
@@ -92,8 +151,8 @@ const mockPaymentReceiptWrongClub: PaymentReceiptWithRelations = {
     tournament: {
       id: 300,
       name: 'Torneo Test',
-      startDate: new Date('2026-06-01'),
       organizerId: 999,
+      startDate: new Date('2026-06-01'),
     },
   },
 }
@@ -166,32 +225,27 @@ describe('validatePayment', () => {
   })
 
   it('actualiza Registration.status = CONFIRMED y paymentStatus = VALIDATED', async () => {
-    clubModelMock.findClubByDelegateUserId.mockResolvedValue(mockClub)
-    clubModelMock.findPaymentReceiptById.mockResolvedValue(mockPaymentReceipt)
-    clubModelMock.updatePaymentStatus.mockResolvedValue({
+    paymentModelMock.findClubByDelegateUserId.mockResolvedValue(mockClub)
+    paymentModelMock.findPaymentReceiptById.mockResolvedValue(mockPaymentReceipt)
+    paymentModelMock.validatePaymentTransaction.mockResolvedValue({
       ...mockPaymentReceipt,
       status: PaymentStatus.validated,
     })
-    clubModelMock.updateRegistrationPayment.mockResolvedValue(undefined as never)
 
-    await clubService.validatePayment(1, 10)
+    await paymentService.validatePayment(1, 10)
 
-    expect(clubModelMock.updateRegistrationPayment).toHaveBeenCalledWith(100, {
-      status: RegistrationStatus.confirmed,
-      paymentStatus: PaymentStatus.validated,
-    })
+    expect(paymentModelMock.validatePaymentTransaction).toHaveBeenCalledWith(1, 10)
   })
 
   it('envía push notification al jugador', async () => {
-    clubModelMock.findClubByDelegateUserId.mockResolvedValue(mockClub)
-    clubModelMock.findPaymentReceiptById.mockResolvedValue(mockPaymentReceipt)
-    clubModelMock.updatePaymentStatus.mockResolvedValue({
+    paymentModelMock.findClubByDelegateUserId.mockResolvedValue(mockClub)
+    paymentModelMock.findPaymentReceiptById.mockResolvedValue(mockPaymentReceipt)
+    paymentModelMock.validatePaymentTransaction.mockResolvedValue({
       ...mockPaymentReceipt,
       status: PaymentStatus.validated,
     })
-    clubModelMock.updateRegistrationPayment.mockResolvedValue(undefined as never)
 
-    await clubService.validatePayment(1, 10)
+    await paymentService.validatePayment(1, 10)
 
     expect(sendPushNotificationMock).toHaveBeenCalledWith({
       userId: 500,
@@ -206,36 +260,36 @@ describe('validatePayment', () => {
   })
 
   it('lanza FORBIDDEN si el usuario no es delegado de ningún club', async () => {
-    clubModelMock.findClubByDelegateUserId.mockResolvedValue(null)
+    paymentModelMock.findClubByDelegateUserId.mockResolvedValue(null)
 
-    await expect(clubService.validatePayment(1, 10)).rejects.toThrow(
+    await expect(paymentService.validatePayment(1, 10)).rejects.toThrow(
       expect.objectContaining({ extensions: { code: 'FORBIDDEN' } })
     )
   })
 
   it('lanza NOT_FOUND si el comprobante no existe', async () => {
-    clubModelMock.findClubByDelegateUserId.mockResolvedValue(mockClub)
-    clubModelMock.findPaymentReceiptById.mockResolvedValue(null)
+    paymentModelMock.findClubByDelegateUserId.mockResolvedValue(mockClub)
+    paymentModelMock.findPaymentReceiptById.mockResolvedValue(null)
 
-    await expect(clubService.validatePayment(1, 10)).rejects.toThrow(
+    await expect(paymentService.validatePayment(1, 10)).rejects.toThrow(
       expect.objectContaining({ extensions: { code: 'NOT_FOUND' } })
     )
   })
 
   it('lanza FORBIDDEN si el torneo no es del club del delegado', async () => {
-    clubModelMock.findClubByDelegateUserId.mockResolvedValue(mockClub)
-    clubModelMock.findPaymentReceiptById.mockResolvedValue(mockPaymentReceiptWrongClub)
+    paymentModelMock.findClubByDelegateUserId.mockResolvedValue(mockClub)
+    paymentModelMock.findPaymentReceiptById.mockResolvedValue(mockPaymentReceiptWrongClub)
 
-    await expect(clubService.validatePayment(1, 10)).rejects.toThrow(
+    await expect(paymentService.validatePayment(1, 10)).rejects.toThrow(
       expect.objectContaining({ extensions: { code: 'FORBIDDEN' } })
     )
   })
 
   it('lanza CONFLICT si el comprobante ya fue procesado', async () => {
-    clubModelMock.findClubByDelegateUserId.mockResolvedValue(mockClub)
-    clubModelMock.findPaymentReceiptById.mockResolvedValue(mockPaymentReceiptAlreadyProcessed)
+    paymentModelMock.findClubByDelegateUserId.mockResolvedValue(mockClub)
+    paymentModelMock.findPaymentReceiptById.mockResolvedValue(mockPaymentReceiptAlreadyProcessed)
 
-    await expect(clubService.validatePayment(1, 10)).rejects.toThrow(
+    await expect(paymentService.validatePayment(1, 10)).rejects.toThrow(
       expect.objectContaining({ extensions: { code: 'CONFLICT' } })
     )
   })
@@ -249,49 +303,43 @@ describe('rejectPayment', () => {
   })
 
   it('actualiza Registration.status = CANCELLED y paymentStatus = REJECTED', async () => {
-    clubModelMock.findClubByDelegateUserId.mockResolvedValue(mockClub)
-    clubModelMock.findPaymentReceiptById.mockResolvedValue(mockPaymentReceipt)
-    clubModelMock.updatePaymentStatus.mockResolvedValue({
+    paymentModelMock.findClubByDelegateUserId.mockResolvedValue(mockClub)
+    paymentModelMock.findPaymentReceiptById.mockResolvedValue(mockPaymentReceipt)
+    paymentModelMock.rejectPaymentTransaction.mockResolvedValue({
       ...mockPaymentReceipt,
       status: PaymentStatus.rejected,
     })
-    clubModelMock.updateRegistrationPayment.mockResolvedValue(undefined as never)
     tournamentModelMock.findNotifyRequests.mockResolvedValue([])
 
-    await clubService.rejectPayment(1, 10, 'Comprobante ilegible')
+    await paymentService.rejectPayment(1, 10, 'Comprobante ilegible')
 
-    expect(clubModelMock.updateRegistrationPayment).toHaveBeenCalledWith(100, {
-      status: RegistrationStatus.cancelled,
-      paymentStatus: PaymentStatus.rejected,
-    })
+    expect(paymentModelMock.rejectPaymentTransaction).toHaveBeenCalledWith(1, 10)
   })
 
   it('llama a findNotifyRequests con el tournamentId correcto', async () => {
-    clubModelMock.findClubByDelegateUserId.mockResolvedValue(mockClub)
-    clubModelMock.findPaymentReceiptById.mockResolvedValue(mockPaymentReceipt)
-    clubModelMock.updatePaymentStatus.mockResolvedValue({
+    paymentModelMock.findClubByDelegateUserId.mockResolvedValue(mockClub)
+    paymentModelMock.findPaymentReceiptById.mockResolvedValue(mockPaymentReceipt)
+    paymentModelMock.rejectPaymentTransaction.mockResolvedValue({
       ...mockPaymentReceipt,
       status: PaymentStatus.rejected,
     })
-    clubModelMock.updateRegistrationPayment.mockResolvedValue(undefined as never)
     tournamentModelMock.findNotifyRequests.mockResolvedValue([])
 
-    await clubService.rejectPayment(1, 10, 'Comprobante ilegible')
+    await paymentService.rejectPayment(1, 10, 'Comprobante ilegible')
 
     expect(tournamentModelMock.findNotifyRequests).toHaveBeenCalledWith(300)
   })
 
   it('envía push notification al jugador rechazado', async () => {
-    clubModelMock.findClubByDelegateUserId.mockResolvedValue(mockClub)
-    clubModelMock.findPaymentReceiptById.mockResolvedValue(mockPaymentReceipt)
-    clubModelMock.updatePaymentStatus.mockResolvedValue({
+    paymentModelMock.findClubByDelegateUserId.mockResolvedValue(mockClub)
+    paymentModelMock.findPaymentReceiptById.mockResolvedValue(mockPaymentReceipt)
+    paymentModelMock.rejectPaymentTransaction.mockResolvedValue({
       ...mockPaymentReceipt,
       status: PaymentStatus.rejected,
     })
-    clubModelMock.updateRegistrationPayment.mockResolvedValue(undefined as never)
     tournamentModelMock.findNotifyRequests.mockResolvedValue([])
 
-    await clubService.rejectPayment(1, 10, 'Comprobante ilegible')
+    await paymentService.rejectPayment(1, 10, 'Comprobante ilegible')
 
     expect(sendPushNotificationMock).toHaveBeenCalledWith({
       userId: 500,
@@ -307,16 +355,15 @@ describe('rejectPayment', () => {
   })
 
   it('envía push notification a todos los usuarios en TournamentNotifyRequest', async () => {
-    clubModelMock.findClubByDelegateUserId.mockResolvedValue(mockClub)
-    clubModelMock.findPaymentReceiptById.mockResolvedValue(mockPaymentReceipt)
-    clubModelMock.updatePaymentStatus.mockResolvedValue({
+    paymentModelMock.findClubByDelegateUserId.mockResolvedValue(mockClub)
+    paymentModelMock.findPaymentReceiptById.mockResolvedValue(mockPaymentReceipt)
+    paymentModelMock.rejectPaymentTransaction.mockResolvedValue({
       ...mockPaymentReceipt,
       status: PaymentStatus.rejected,
     })
-    clubModelMock.updateRegistrationPayment.mockResolvedValue(undefined as never)
     tournamentModelMock.findNotifyRequests.mockResolvedValue([{ userId: 600 }, { userId: 700 }])
 
-    await clubService.rejectPayment(1, 10, 'Comprobante ilegible')
+    await paymentService.rejectPayment(1, 10, 'Comprobante ilegible')
 
     expect(sendPushNotificationMock).toHaveBeenCalledTimes(3)
     expect(sendPushNotificationMock).toHaveBeenCalledWith(
@@ -338,37 +385,193 @@ describe('rejectPayment', () => {
   })
 
   it('lanza FORBIDDEN si el usuario no es delegado de ningún club', async () => {
-    clubModelMock.findClubByDelegateUserId.mockResolvedValue(null)
+    paymentModelMock.findClubByDelegateUserId.mockResolvedValue(null)
 
-    await expect(clubService.rejectPayment(1, 10, 'Motivo')).rejects.toThrow(
+    await expect(paymentService.rejectPayment(1, 10, 'Motivo')).rejects.toThrow(
       expect.objectContaining({ extensions: { code: 'FORBIDDEN' } })
     )
   })
 
   it('lanza NOT_FOUND si el comprobante no existe', async () => {
-    clubModelMock.findClubByDelegateUserId.mockResolvedValue(mockClub)
-    clubModelMock.findPaymentReceiptById.mockResolvedValue(null)
+    paymentModelMock.findClubByDelegateUserId.mockResolvedValue(mockClub)
+    paymentModelMock.findPaymentReceiptById.mockResolvedValue(null)
 
-    await expect(clubService.rejectPayment(1, 10, 'Motivo')).rejects.toThrow(
+    await expect(paymentService.rejectPayment(1, 10, 'Motivo')).rejects.toThrow(
       expect.objectContaining({ extensions: { code: 'NOT_FOUND' } })
     )
   })
 
   it('lanza FORBIDDEN si el torneo no es del club del delegado', async () => {
-    clubModelMock.findClubByDelegateUserId.mockResolvedValue(mockClub)
-    clubModelMock.findPaymentReceiptById.mockResolvedValue(mockPaymentReceiptWrongClub)
+    paymentModelMock.findClubByDelegateUserId.mockResolvedValue(mockClub)
+    paymentModelMock.findPaymentReceiptById.mockResolvedValue(mockPaymentReceiptWrongClub)
 
-    await expect(clubService.rejectPayment(1, 10, 'Motivo')).rejects.toThrow(
+    await expect(paymentService.rejectPayment(1, 10, 'Motivo')).rejects.toThrow(
       expect.objectContaining({ extensions: { code: 'FORBIDDEN' } })
     )
   })
 
   it('lanza CONFLICT si el comprobante ya fue procesado', async () => {
-    clubModelMock.findClubByDelegateUserId.mockResolvedValue(mockClub)
-    clubModelMock.findPaymentReceiptById.mockResolvedValue(mockPaymentReceiptAlreadyProcessed)
+    paymentModelMock.findClubByDelegateUserId.mockResolvedValue(mockClub)
+    paymentModelMock.findPaymentReceiptById.mockResolvedValue(mockPaymentReceiptAlreadyProcessed)
 
-    await expect(clubService.rejectPayment(1, 10, 'Motivo')).rejects.toThrow(
+    await expect(paymentService.rejectPayment(1, 10, 'Motivo')).rejects.toThrow(
       expect.objectContaining({ extensions: { code: 'CONFLICT' } })
+    )
+  })
+})
+
+// ── addDelegate ──────────────────────────────────────────────────────────────
+
+describe('addDelegate', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it('añade correctamente un delegate al club', async () => {
+    const mockUser = {
+      id: 999,
+      email: 'newdelegate@test.com',
+      fullName: 'New Delegate',
+      role: 'player',
+      player: null,
+    }
+
+    clubModelMock.findClubById.mockResolvedValue(mockClub)
+    clubModelMock.findUserByEmail.mockResolvedValue(mockUser)
+    clubModelMock.addDelegateToClub.mockResolvedValue({
+      ...mockClub,
+      delegates: [
+        ...mockClub.delegates,
+        {
+          id: 2,
+          userId: 999,
+          user: {
+            email: 'newdelegate@test.com',
+            fullName: 'New Delegate',
+            phone: null,
+            player: null,
+          },
+        },
+      ],
+    })
+
+    const result = await clubService.addDelegate(1, 'newdelegate@test.com', 10)
+
+    expect(clubModelMock.addDelegateToClub).toHaveBeenCalledWith(1, 999)
+    expect(result.delegates).toHaveLength(2)
+  })
+
+  it('lanza NOT_FOUND si el club no existe', async () => {
+    clubModelMock.findClubById.mockResolvedValue(null)
+
+    await expect(clubService.addDelegate(1, 'user@test.com', 10)).rejects.toThrow(
+      expect.objectContaining({ extensions: { code: 'NOT_FOUND' } })
+    )
+  })
+
+  it('lanza FORBIDDEN si el solicitante no es delegado del club', async () => {
+    clubModelMock.findClubById.mockResolvedValue(mockClub)
+
+    await expect(clubService.addDelegate(1, 'user@test.com', 888)).rejects.toThrow(
+      expect.objectContaining({ extensions: { code: 'FORBIDDEN' } })
+    )
+  })
+
+  it('lanza NOT_FOUND si el email no corresponde a ningún usuario', async () => {
+    clubModelMock.findClubById.mockResolvedValue(mockClub)
+    clubModelMock.findUserByEmail.mockResolvedValue(null)
+
+    await expect(clubService.addDelegate(1, 'noexiste@test.com', 10)).rejects.toThrow(
+      expect.objectContaining({ extensions: { code: 'NOT_FOUND' } })
+    )
+  })
+
+  it('lanza CONFLICT si el usuario ya es delegado', async () => {
+    const existingDelegate = {
+      id: 10,
+      email: 'delegate@test.com',
+      fullName: 'Delegado Test',
+      role: 'delegate',
+      player: null,
+    }
+
+    clubModelMock.findClubById.mockResolvedValue(mockClub)
+    clubModelMock.findUserByEmail.mockResolvedValue(existingDelegate)
+
+    await expect(clubService.addDelegate(1, 'delegate@test.com', 10)).rejects.toThrow(
+      expect.objectContaining({ extensions: { code: 'CONFLICT' } })
+    )
+  })
+})
+
+// ── removeDelegate ───────────────────────────────────────────────────────────
+
+describe('removeDelegate', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it('elimina correctamente un delegate del club', async () => {
+    const clubWithTwoDelegates = {
+      ...mockClub,
+      delegates: [
+        { id: 1, userId: 10, user: { email: 'delegate1@test.com', fullName: 'Delegado 1', phone: null, player: null } },
+        { id: 2, userId: 20, user: { email: 'delegate2@test.com', fullName: 'Delegado 2', phone: null, player: null } },
+      ],
+    }
+
+    clubModelMock.findClubById.mockResolvedValue(clubWithTwoDelegates)
+    clubModelMock.removeDelegateFromClub.mockResolvedValue({
+      ...clubWithTwoDelegates,
+      delegates: [
+        {
+          id: 1,
+          userId: 10,
+          user: {
+            email: 'delegate1@test.com',
+            fullName: 'Delegado 1',
+            phone: null,
+            player: null,
+          },
+        },
+      ],
+    })
+
+    const result = await clubService.removeDelegate(1, 20, 10)
+
+    expect(clubModelMock.removeDelegateFromClub).toHaveBeenCalledWith(1, 20)
+    expect(result.delegates).toHaveLength(1)
+  })
+
+  it('lanza NOT_FOUND si el club no existe', async () => {
+    clubModelMock.findClubById.mockResolvedValue(null)
+
+    await expect(clubService.removeDelegate(1, 20, 10)).rejects.toThrow(
+      expect.objectContaining({ extensions: { code: 'NOT_FOUND' } })
+    )
+  })
+
+  it('lanza FORBIDDEN si el solicitante no es delegado', async () => {
+    clubModelMock.findClubById.mockResolvedValue(mockClub)
+
+    await expect(clubService.removeDelegate(1, 20, 888)).rejects.toThrow(
+      expect.objectContaining({ extensions: { code: 'FORBIDDEN' } })
+    )
+  })
+
+  it('lanza BAD_USER_INPUT si intenta eliminarse a sí mismo', async () => {
+    clubModelMock.findClubById.mockResolvedValue(mockClub)
+
+    await expect(clubService.removeDelegate(1, 10, 10)).rejects.toThrow(
+      expect.objectContaining({ extensions: { code: 'BAD_USER_INPUT' } })
+    )
+  })
+
+  it('lanza NOT_FOUND si el usuario target no es delegado', async () => {
+    clubModelMock.findClubById.mockResolvedValue(mockClub)
+
+    await expect(clubService.removeDelegate(1, 999, 10)).rejects.toThrow(
+      expect.objectContaining({ extensions: { code: 'NOT_FOUND' } })
     )
   })
 })

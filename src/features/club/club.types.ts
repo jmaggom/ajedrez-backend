@@ -59,46 +59,6 @@ export type ClubWithRelations = Prisma.ClubGetPayload<{
   select: typeof clubSelect;
 }>;
 
-export const paymentReceiptSelect = {
-  id: true,
-  registrationId: true,
-  licenseId: true,
-  amount: true,
-  date: true,
-  status: true,
-  fileUrl: true,
-  validatedById: true,
-  validatedAt: true,
-  registration: {
-    select: {
-      id: true,
-      player: {
-        select: {
-          id: true,
-          user: {
-            select: {
-              id: true,
-              fullName: true,
-            },
-          },
-        },
-      },
-      tournament: {
-        select: {
-          id: true,
-          name: true,
-          startDate: true,
-          organizerId: true,
-        },
-      },
-    },
-  },
-} satisfies Prisma.PaymentReceiptSelect;
-
-export type PaymentReceiptWithRelations = Prisma.PaymentReceiptGetPayload<{
-  select: typeof paymentReceiptSelect;
-}>;
-
 export type ExpiringLicenseResult = {
   id: string;
   type: string;
