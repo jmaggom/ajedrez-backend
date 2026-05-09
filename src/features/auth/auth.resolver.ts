@@ -16,5 +16,10 @@ export const authResolvers = {
                 throw new GraphQLError('Unauthenticated', { extensions: { code: 'UNAUTHENTICATED' } });
             return authService.savePushToken(context.user.id, token);
         },
+        logout: (_: unknown, __: unknown, context: Context) => {
+            if (!context.user)
+                throw new GraphQLError('Unauthenticated', { extensions: { code: 'UNAUTHENTICATED' } });
+            return authService.logout(context.user.id);
+        },
     },
 };
