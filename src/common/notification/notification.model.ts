@@ -10,6 +10,15 @@ export const findUserPushToken = async (userId: number): Promise<string | null> 
   return user?.pushToken ?? null;
 };
 
+export const findUserPushTokensBatch = async (
+  userIds: number[],
+): Promise<Array<{ id: number; pushToken: string | null }>> => {
+  return prisma.user.findMany({
+    where: { id: { in: userIds } },
+    select: { id: true, pushToken: true },
+  });
+};
+
 export const saveNotification = async (
   { userId, type, title, message, data }: NotificationInput,
 ): Promise<number> => {
