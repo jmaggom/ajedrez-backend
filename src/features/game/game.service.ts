@@ -18,6 +18,7 @@ import {
   type PlayerStats,
 } from './game.types';
 import { GAME_RESULT_MAP, WHITE_POINTS, BLACK_POINTS } from './game.constants';
+import { closeTournamentInDb } from '../tournament/tournament.model';
 
 // ── Helpers internos ──────────────────────────────────────────────────────────
 
@@ -376,43 +377,44 @@ export const publishPairings = async (
   const pairings = generateSwissPairings(pairingInputs, previousMatchups, nextRound, colorHistory);
 
   // Crear partidas en BD
-  const createdGames: GameWithRelations[] = [];
-  for (const pairing of pairings) {
-    if (pairing.isBye) {
-      const byeGame = await gameModel.createByeGame({
-        tournamentId,
-        roundNumber: nextRound,
-        byePlayerId: pairing.byePlayerId,
-        tableNumber: pairing.tableNumber,
-      });
-      createdGames.push(byeGame);
+  const createdGames = await Promise.all(
+    pairings.map(async (pairing) => {
+      if (pairing.isBye) {
+        const byeGame = await gameModel.createByeGame({
+          tournamentId,
+          roundNumber: nextRound,
+          byePlayerId: pairing.byePlayerId,
+          tableNumber: pairing.tableNumber,
+        });
 
-      // Upsert TournamentResult con 1 punto automático para el jugador con BYE
-      const currentPoints = pointsMap.get(pairing.byePlayerId) ?? 0;
-      const currentStats = results.find((r) => r.playerId === pairing.byePlayerId);
-      await gameModel.upsertTournamentResult({
-        playerId: pairing.byePlayerId,
-        tournamentId,
-        points: currentPoints + 1,
-        winsAsWhite: currentStats?.winsAsWhite ?? 0,
-        drawsAsWhite: currentStats?.drawsAsWhite ?? 0,
-        lossesAsWhite: currentStats?.lossesAsWhite ?? 0,
-        winsAsBlack: currentStats?.winsAsBlack ?? 0,
-        drawsAsBlack: currentStats?.drawsAsBlack ?? 0,
-        lossesAsBlack: currentStats?.lossesAsBlack ?? 0,
-      });
-    } else {
-      const game = await gameModel.createGame({
-        tournamentId,
-        roundNumber: nextRound,
-        whitePlayerId: pairing.whitePlayerId,
-        blackPlayerId: pairing.blackPlayerId,
-        tableNumber: pairing.tableNumber,
-        eloEligible: tournament.eloEligible,
-      });
-      createdGames.push(game);
-    }
-  }
+        // Upsert TournamentResult con 1 punto automático para el jugador con BYE
+        const currentPoints = pointsMap.get(pairing.byePlayerId) ?? 0;
+        const currentStats = results.find((r) => r.playerId === pairing.byePlayerId);
+        await gameModel.upsertTournamentResult({
+          playerId: pairing.byePlayerId,
+          tournamentId,
+          points: currentPoints + 1,
+          winsAsWhite: currentStats?.winsAsWhite ?? 0,
+          drawsAsWhite: currentStats?.drawsAsWhite ?? 0,
+          lossesAsWhite: currentStats?.lossesAsWhite ?? 0,
+          winsAsBlack: currentStats?.winsAsBlack ?? 0,
+          drawsAsBlack: currentStats?.drawsAsBlack ?? 0,
+          lossesAsBlack: currentStats?.lossesAsBlack ?? 0,
+        });
+
+        return byeGame;
+      } else {
+        return gameModel.createGame({
+          tournamentId,
+          roundNumber: nextRound,
+          whitePlayerId: pairing.whitePlayerId,
+          blackPlayerId: pairing.blackPlayerId,
+          tableNumber: pairing.tableNumber,
+          eloEligible: tournament.eloEligible,
+        });
+      }
+    })
+  );
 
   // Actualizar currentRound
   await gameModel.updateTournamentCurrentRound(tournamentId, nextRound);
@@ -473,7 +475,7 @@ export const closeTournament = async (
   tournamentId: number,
   userId: number,
 ): Promise<{
-  tournament: Awaited<ReturnType<typeof gameModel.closeTournamentInDb>>;
+  tournament: Awaited<ReturnType<typeof import('../tournament/tournament.model').closeTournamentInDb>>;
   finalStandings: Awaited<ReturnType<typeof getTournamentStandings>>;
 }> => {
   const tournament = await gameModel.findTournamentById(tournamentId);
@@ -495,7 +497,7 @@ export const closeTournament = async (
     throw new GraphQLError('Forbidden', { extensions: { code: 'FORBIDDEN' } });
 
   const finalStandings = await getTournamentStandings(tournamentId);
-  const closedTournament = await gameModel.closeTournamentInDb(tournamentId);
+  const closedTournament = await closeTournamentInDb(tournamentId);
 
   const registrations = await gameModel.findConfirmedRegistrationsByTournament(tournamentId);
   await Promise.allSettled(

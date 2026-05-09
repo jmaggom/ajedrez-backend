@@ -34,36 +34,6 @@ export const updateTournamentCurrentRound = async (
   });
 };
 
-export const closeTournamentInDb = async (tournamentId: number) => {
-  return prisma.tournament.update({
-    where: { id: tournamentId },
-    data: { status: TournamentStatus.finished },
-    select: {
-      id: true,
-      name: true,
-      status: true,
-      rounds: true,
-      currentRound: true,
-      startDate: true,
-      endDate: true,
-      venue: true,
-      organizerId: true,
-      eloEligible: true,
-      mode: true,
-      timeControl: true,
-      availableSlots: true,
-      registrationFee: true,
-      description: true,
-      format: true,
-      requirements: true,
-      latitude: true,
-      longitude: true,
-      notificationRadius: true,
-      geoNotificationActive: true,
-    },
-  });
-};
-
 // ── Usuarios ──────────────────────────────────────────────────────────────────
 
 export const findUserById = async (
