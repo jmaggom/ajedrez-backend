@@ -37,7 +37,7 @@ const clubsData = [
   { name: 'Club Ajedrez Zaragoza', community: 'Aragón', shortCode: 'CAZ' },
   { name: 'Club Ajedrez Huesca', community: 'Aragón', shortCode: 'CAH' },
   { name: 'Club Ajedrez Oviedo', community: 'Asturias', shortCode: 'CAO' },
-  { name: 'Club Ajedrez Gijón', community: 'Asturias', shortCode: 'CAGi' },
+  { name: 'Club Ajedrez Gijón', community: 'Asturias', shortCode: 'CAGIJ' },
   { name: 'Club Ajedrez Palma', community: 'Baleares', shortCode: 'CAP' },
   { name: 'Club Ajedrez Las Palmas', community: 'Canarias', shortCode: 'CALP' },
   { name: 'Club Ajedrez Tenerife', community: 'Canarias', shortCode: 'CATEN' },
@@ -192,6 +192,17 @@ function getPoints(result: GameResult, isWhite: boolean): number {
   return isWhite ? 0 : 1;
 }
 
+/**
+ * Normaliza un string para usarlo en emails: quita tildes y caracteres especiales
+ */
+function normalizeForEmail(str: string): string {
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9.]/g, '');
+}
+
 // ─── CLEAN DATABASE ───────────────────────────────────────────────────────
 
 async function cleanDatabase() {
@@ -265,7 +276,7 @@ async function main() {
     const fullName = generateName(index + 10000);
     const user = await prisma.user.create({
       data: {
-        email: `delegado.${index + 1}@${club.shortCode.toLowerCase()}.es`,
+        email: `delegado${index + 1}.${normalizeForEmail(club.shortCode)}@mail.com`,
         password,
         role: Role.delegate,
         fullName,
@@ -326,7 +337,7 @@ async function main() {
       const fullName = generateName(userIndex);
       const user = await prisma.user.create({
         data: {
-          email: `${fullName.toLowerCase().replace(/\s+/g, '.')}.${userIndex}@mail.com`,
+          email: `jugador${i + 1}.${normalizeForEmail(club.shortCode)}@mail.com`,
           password,
           role: Role.player,
           fullName,
@@ -376,7 +387,7 @@ async function main() {
       const fullName = generateName(userIndex);
       const user = await prisma.user.create({
         data: {
-          email: `${fullName.toLowerCase().replace(/\s+/g, '.')}.${userIndex}@mail.com`,
+          email: `jugador${i + 1}.${normalizeForEmail(club.shortCode)}@mail.com`,
           password,
           role: Role.player,
           fullName,
@@ -416,7 +427,7 @@ async function main() {
     const fullName = generateName(userIndex);
     const user = await prisma.user.create({
       data: {
-        email: `${fullName.toLowerCase().replace(/\s+/g, '.')}.${userIndex}@mail.com`,
+        email: `jugador${i + 1}.libre@mail.com`,
         password,
         role: Role.player,
         fullName,
@@ -854,6 +865,66 @@ async function main() {
 
     console.log(`✅ ${sevillaGamesCreated} partidas en curso creadas para ${sevillaInProgressTournament.name}`);
     console.log(`   Rondas 1-3: completadas | Ronda 4: en curso | Rondas 5-9: pendientes`);
+
+    // ─── CALCULAR TOURNAMENT RESULTS PARA SEVILLA (rondas 1-3) ─────────────
+    // Solo rondas completadas contribuyen a la clasificación en vivo
+
+    const sevillaPointsMap: Record<number, number> = {};
+    const sevillaStatsMap: Record<number, {
+      winsAsWhite: number; drawsAsWhite: number; lossesAsWhite: number;
+      winsAsBlack: number; drawsAsBlack: number; lossesAsBlack: number;
+    }> = {};
+
+    for (const playerId of sevillaPlayers) {
+      sevillaPointsMap[playerId] = 0;
+      sevillaStatsMap[playerId] = {
+        winsAsWhite: 0, drawsAsWhite: 0, lossesAsWhite: 0,
+        winsAsBlack: 0, drawsAsBlack: 0, lossesAsBlack: 0,
+      };
+    }
+
+    for (let round = 1; round <= 3; round++) {
+      const pairings = generateSwissRoundPairings(sevillaPlayers, round);
+      pairings.forEach((p, idx) => {
+        const result = getGameResult(tid * 1000 + round * 100 + idx);
+        sevillaPointsMap[p.white] += getPoints(result, true);
+        sevillaPointsMap[p.black] += getPoints(result, false);
+        if (result === GameResult.white_wins) {
+          sevillaStatsMap[p.white].winsAsWhite++;
+          sevillaStatsMap[p.black].lossesAsBlack++;
+        } else if (result === GameResult.black_wins) {
+          sevillaStatsMap[p.white].lossesAsWhite++;
+          sevillaStatsMap[p.black].winsAsBlack++;
+        } else {
+          sevillaStatsMap[p.white].drawsAsWhite++;
+          sevillaStatsMap[p.black].drawsAsBlack++;
+        }
+      });
+    }
+
+    const sevillaSorted = [...sevillaPlayers].sort(
+      (a, b) => sevillaPointsMap[b] - sevillaPointsMap[a],
+    );
+
+    await prisma.tournamentResult.createMany({
+      data: sevillaSorted.map((playerId, index) => ({
+        playerId,
+        tournamentId: tid,
+        finalPosition: index + 1,
+        points: sevillaPointsMap[playerId],
+        winsAsWhite: sevillaStatsMap[playerId].winsAsWhite,
+        drawsAsWhite: sevillaStatsMap[playerId].drawsAsWhite,
+        lossesAsWhite: sevillaStatsMap[playerId].lossesAsWhite,
+        winsAsBlack: sevillaStatsMap[playerId].winsAsBlack,
+        drawsAsBlack: sevillaStatsMap[playerId].drawsAsBlack,
+        lossesAsBlack: sevillaStatsMap[playerId].lossesAsBlack,
+        eloEligible: true,
+        isFideRated: false,
+        isFadaRated: true,
+      })),
+    });
+
+    console.log(`✅ TournamentResult creados para ${sevillaPlayers.length} jugadores del torneo en curso de Sevilla`);
   }
 
   // ─── CREAR LICENCIAS ────────────────────────────────────────────────────
@@ -1029,8 +1100,8 @@ async function main() {
   console.log('   Password:    Password123!');
   console.log('');
   console.log('👥 Delegados que también son jugadores:');
-  console.log('   delegado.1@cas.es    (Club Ajedrez Sevilla)');
-  console.log('   delegado.2@rcam.es   (Real Club Ajedrez Madrid)');
+  console.log('   delegado1.cas@mail.com    (Club Ajedrez Sevilla)');
+  console.log('   delegado2.rcam@mail.com   (Real Club Ajedrez Madrid)');
   console.log('─────────────────────────────────────────');
 }
 

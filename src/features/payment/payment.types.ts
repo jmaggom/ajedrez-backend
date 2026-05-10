@@ -37,7 +37,7 @@ export const paymentReceiptSelect = {
   registration: {
     include: {
       tournament: {
-        select: { id: true, name: true, organizerId: true },
+        select: { id: true, name: true, organizerId: true, startDate: true },
       },
       player: {
         include: {

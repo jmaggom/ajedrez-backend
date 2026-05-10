@@ -54,3 +54,34 @@ export const createDelegate = async (data: {
         }
     });
 };
+
+/**
+ * Crea o actualiza la MobileSession del usuario
+ */
+export const upsertMobileSession = async (userId: number, token: string, expiresAt: Date): Promise<void> => {
+    await prisma.mobileSession.upsert({
+        where: { token },
+        update: { isActive: true, expiresAt },
+        create: { userId, token, isActive: true, expiresAt },
+    });
+};
+
+/**
+ * Marca como inactivas todas las sesiones del usuario
+ */
+export const invalidateUserSessions = async (userId: number): Promise<void> => {
+    await prisma.mobileSession.updateMany({
+        where: { userId, isActive: true },
+        data: { isActive: false },
+    });
+};
+
+/**
+ * Verifica si existe una sesión activa para el usuario
+ */
+export const findActiveSession = async (userId: number): Promise<boolean> => {
+    const session = await prisma.mobileSession.findFirst({
+        where: { userId, isActive: true },
+    });
+    return !!session;
+};

@@ -71,17 +71,17 @@ export const sendBatchPushNotifications = async (
     ),
   );
 
-  const pushTokens = await Promise.all(
-    inputs.map((input) => notificationModel.findUserPushToken(input.userId)),
-  );
+  const userIds = inputs.map((input) => input.userId);
+  const usersWithTokens = await notificationModel.findUserPushTokensBatch(userIds);
+  const tokenMap = new Map(usersWithTokens.map((u) => [u.id, u.pushToken]));
 
   const validMessages: Array<{ message: ExpoPushMessage; notificationId: number }> = [];
   const skippedIds: number[] = [];
 
   for (let i = 0; i < inputs.length; i++) {
-    const token = pushTokens[i];
     const notificationId = notificationIds[i];
     const input = inputs[i];
+    const token = tokenMap.get(input.userId);
 
     if (!token || !Expo.isExpoPushToken(token)) {
       skippedIds.push(notificationId);

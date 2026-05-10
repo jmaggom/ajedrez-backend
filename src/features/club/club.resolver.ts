@@ -1,6 +1,7 @@
 import { GraphQLError } from 'graphql';
 import type { Context } from '../../common/context.types';
 import * as clubService from './club.service';
+import * as paymentService from '../payment/payment.service';
 import type { UpdateClubInput } from './club.types';
 
 export const clubResolvers = {
@@ -120,8 +121,7 @@ export const clubResolvers = {
     ) => {
       if (!context.user)
         throw new GraphQLError('Unauthenticated', { extensions: { code: 'UNAUTHENTICATED' } });
-      const club = await clubService.getMyClub(context.user.id);
-      return clubService.updateClub(club.id, input, context.user.id);
+      return clubService.updateMyClub(context.user.id, input);
     },
 
     addPlayerToClub: (
@@ -151,7 +151,7 @@ export const clubResolvers = {
     ) => {
       if (!context.user)
         throw new GraphQLError('Unauthenticated', { extensions: { code: 'UNAUTHENTICATED' } });
-      return clubService.validatePayment(Number(paymentReceiptId), context.user.id);
+      return paymentService.validatePayment(Number(paymentReceiptId), context.user.id);
     },
 
     rejectPayment: (
@@ -161,7 +161,7 @@ export const clubResolvers = {
     ) => {
       if (!context.user)
         throw new GraphQLError('Unauthenticated', { extensions: { code: 'UNAUTHENTICATED' } });
-      return clubService.rejectPayment(Number(paymentReceiptId), context.user.id, reason);
+      return paymentService.rejectPayment(Number(paymentReceiptId), context.user.id, reason);
     },
 
     addDelegate: (

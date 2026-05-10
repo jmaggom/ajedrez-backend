@@ -36,6 +36,7 @@ export const getAvatarUploadUrl = async (params: {
     .createSignedUploadUrl(params.path);
 
   if (error) throw new Error(error.message);
+  if (!data?.signedUrl || !data?.token) throw new Error(`Supabase returned empty signed URL: ${JSON.stringify(data)}`);
 
   return { uploadUrl: data.signedUrl, token: data.token, path: params.path };
 };

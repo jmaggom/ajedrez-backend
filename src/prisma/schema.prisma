@@ -194,6 +194,8 @@ model Tournament {
   games             Game[]
   results           TournamentResult[]
   notifyRequests    TournamentNotifyRequest[]
+
+  @@index([organizerId])
 }
 
 model Registration {
@@ -210,6 +212,9 @@ model Registration {
   tournament       Tournament         @relation(fields: [tournamentId], references: [id])
   paymentReceipt   PaymentReceipt?
   registeredBy     User?              @relation("RegistrationRegisteredBy", fields: [registeredById], references: [id])
+
+  @@index([tournamentId])
+  @@index([playerId])
 }
 
 model PaymentReceipt {
@@ -249,6 +254,8 @@ model Game {
   blackPlayer       Player?     @relation("JugadorNegro", fields: [blackPlayerId], references: [id])
   byePlayer         Player?     @relation("JugadorBye", fields: [byePlayerId], references: [id])
   registeredBy      User?       @relation("GameRegisteredBy", fields: [registeredById], references: [id])
+
+  @@index([tournamentId])
 }
 
 model EloHistory {

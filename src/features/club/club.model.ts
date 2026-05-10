@@ -1,13 +1,12 @@
 import { prisma } from '../../config/database';
-import { LicenseStatus, PaymentStatus, Prisma, RegistrationStatus } from '@prisma/client';
+import { LicenseStatus, PaymentStatus, Prisma, RegistrationStatus, TournamentStatus } from '@prisma/client';
 import {
   clubSelect,
-  paymentReceiptSelect,
   type ClubWithRelations,
-  type PaymentReceiptWithRelations,
   type UpdateClubInput,
 } from './club.types';
 import type { PlayerWithRelations } from './club.types';
+import { paymentReceiptSelect, type PaymentReceiptWithRelations } from '../payment/payment.types';
 
 export const findUserByEmail = async (email: string): Promise<{ id: number; email: string; fullName: string; role: string; player: { id: number } | null } | null> => {
   return prisma.user.findFirst({
@@ -237,7 +236,7 @@ export const findRecentRegistrations = async (params: {
       where: {
         tournament: {
           organizerId: clubId,
-          status: { in: ['open', 'in_progress'] },
+          status: { in: [TournamentStatus.open, TournamentStatus.in_progress] },
         },
       },
       orderBy: { registeredAt: 'desc' },
@@ -252,7 +251,7 @@ export const findRecentRegistrations = async (params: {
       where: {
         tournament: {
           organizerId: clubId,
-          status: { in: ['open', 'in_progress'] },
+          status: { in: [TournamentStatus.open, TournamentStatus.in_progress] },
         },
       },
     }),

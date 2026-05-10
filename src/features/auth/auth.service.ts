@@ -15,6 +15,12 @@ const buildToken = (user: User): string => {
     );
 };
 
+const calculateExpirationDate = (): Date => {
+    const now = new Date();
+    const expirationDays = 7; // Debe coincidir con JWT_EXPIRATION
+    return new Date(now.getTime() + expirationDays * 24 * 60 * 60 * 1000);
+};
+
 export const login = async (input: EmailLoginInput): Promise<{ mToken: string }> => {
     const user = await authModel.findUserByEmail(input.email);
     if (!user) {
@@ -26,7 +32,11 @@ export const login = async (input: EmailLoginInput): Promise<{ mToken: string }>
         throw new GraphQLError("Invalid credentials", { extensions: { code: "UNAUTHENTICATED" } });
     }
 
-    return { mToken: buildToken(user) };
+    const token = buildToken(user);
+    const expiresAt = calculateExpirationDate();
+    await authModel.upsertMobileSession(user.id, token, expiresAt);
+
+    return { mToken: token };
 };
 
 export const registerPlayer = async (input: RegisterPlayerInput): Promise<{ mToken: string }> => {
@@ -45,7 +55,11 @@ export const registerPlayer = async (input: RegisterPlayerInput): Promise<{ mTok
         fideId: input.fideId,
     });
 
-    return { mToken: buildToken(user) };
+    const token = buildToken(user);
+    const expiresAt = calculateExpirationDate();
+    await authModel.upsertMobileSession(user.id, token, expiresAt);
+
+    return { mToken: token };
 };
 
 export const savePushToken = async (userId: number, token: string): Promise<boolean> => {
@@ -70,5 +84,17 @@ export const registerDelegate = async (input: RegisterDelegateInput): Promise<{ 
         fullName: input.name,
     });
 
-    return { mToken: buildToken(user) };
+    const token = buildToken(user);
+    const expiresAt = calculateExpirationDate();
+    await authModel.upsertMobileSession(user.id, token, expiresAt);
+
+    return { mToken: token };
+};
+
+/**
+ * Invalida todas las sesiones activas del usuario
+ */
+export const logout = async (userId: number): Promise<boolean> => {
+    await authModel.invalidateUserSessions(userId);
+    return true;
 };

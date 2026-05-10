@@ -1,6 +1,7 @@
 import { GraphQLError } from 'graphql';
 import { LicenseStatus, LicenseType, Role, RegistrationStatus, TournamentStatus } from '@prisma/client';
 import * as tournamentModel from './tournament.model';
+import { getTournamentStandings as gameGetStandings } from '../game/game.service';
 import { NotificationType } from '@prisma/client';
 import { sendPushNotification, sendBatchPushNotifications } from '../../common/notification/notification.service';
 import type {
@@ -126,8 +127,8 @@ export const updateTournament = async (
   if (!tournament)
     throw new GraphQLError('Tournament not found', { extensions: { code: 'NOT_FOUND' } });
 
-  if (tournament.status !== TournamentStatus.open)
-    throw new GraphQLError('Cannot edit tournament that is not open', { extensions: { code: 'FORBIDDEN' } });
+  if (tournament.status !== TournamentStatus.open && tournament.status !== TournamentStatus.draft)
+    throw new GraphQLError('Cannot edit tournament that is not open or draft', { extensions: { code: 'FORBIDDEN' } });
 
   const user = await tournamentModel.findUserWithRole(userId);
   if (!user || (user.role !== Role.admin && user.clubId !== tournament.organizerId))
@@ -318,4 +319,8 @@ export const cancelTournamentNotification = async (
 ): Promise<{ isRequested: boolean }> => {
   await tournamentModel.deleteNotifyRequest(userId, tournamentId);
   return { isRequested: false };
+};
+
+export const getTournamentStandings = async (tournamentId: number) => {
+  return gameGetStandings(tournamentId);
 };

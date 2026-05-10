@@ -106,36 +106,38 @@ export const syncPlayerFideData = async (
             data: data.elo,
         });
 
-        for (const entry of data.historyEntries) {
-            await tx.eloHistory.upsert({
-                where: {
-                    playerId_source_period: {
+        await Promise.all(
+            data.historyEntries.map((entry) =>
+                tx.eloHistory.upsert({
+                    where: {
+                        playerId_source_period: {
+                            playerId: player.id,
+                            source: EloSource.fide_api,
+                            period: entry.period,
+                        },
+                    },
+                    create: {
                         playerId: player.id,
                         source: EloSource.fide_api,
                         period: entry.period,
+                        classical: entry.classical,
+                        rapid: entry.rapid,
+                        blitz: entry.blitz,
+                        classicalGames: entry.classicalGames,
+                        rapidGames: entry.rapidGames,
+                        blitzGames: entry.blitzGames,
                     },
-                },
-                create: {
-                    playerId: player.id,
-                    source: EloSource.fide_api,
-                    period: entry.period,
-                    classical: entry.classical,
-                    rapid: entry.rapid,
-                    blitz: entry.blitz,
-                    classicalGames: entry.classicalGames,
-                    rapidGames: entry.rapidGames,
-                    blitzGames: entry.blitzGames,
-                },
-                update: {
-                    classical: entry.classical,
-                    rapid: entry.rapid,
-                    blitz: entry.blitz,
-                    classicalGames: entry.classicalGames,
-                    rapidGames: entry.rapidGames,
-                    blitzGames: entry.blitzGames,
-                },
-            });
-        }
+                    update: {
+                        classical: entry.classical,
+                        rapid: entry.rapid,
+                        blitz: entry.blitz,
+                        classicalGames: entry.classicalGames,
+                        rapidGames: entry.rapidGames,
+                        blitzGames: entry.blitzGames,
+                    },
+                })
+            )
+        );
 
         return tx.user.findUniqueOrThrow({
             where: { id: userId },
