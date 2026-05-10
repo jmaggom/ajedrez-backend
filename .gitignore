@@ -5,7 +5,3 @@ coverage/
 .env
 
 /src/generated/prisma
-
-#claude
-CLAUDE.md
-.claude
