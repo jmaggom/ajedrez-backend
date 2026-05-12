@@ -18,7 +18,7 @@ Backend de **GEFE.CONNECT**. API GraphQL construida con Node.js + Apollo Server 
 | **Base de datos** | PostgreSQL | 14+ |
 | **Autenticación** | JWT (jsonwebtoken) | - |
 | **Storage de archivos** | Supabase | 2.x |
-| **Notificaciones push** | Firebase Admin + Expo Server SDK | - |
+| **Notificaciones push** | Expo Notification + Expo Server SDK | - |
 | **Package manager** | Yarn | 4.x |
 
 ---
